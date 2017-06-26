@@ -357,11 +357,11 @@ func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, store
 func (h *Handshaker) replayBlock(height int, proxyApp proxy.AppConnConsensus) ([]byte, error) {
 	mempool := types.MockMempool{}
 
-	var eventCache types.Fireable // nil
+	var eventsPub types.EventsPublisher // nil
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
-	if err := h.state.ApplyBlock(eventCache, proxyApp, block, meta.BlockID.PartsHeader, mempool); err != nil {
+	if err := h.state.ApplyBlock(eventsPub, proxyApp, block, meta.BlockID.PartsHeader, mempool); err != nil {
 		return nil, err
 	}
 

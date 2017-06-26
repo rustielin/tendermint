@@ -46,12 +46,8 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // If CheckTx or DeliverTx fail, no error will be returned, but the returned result
 // will contain a non-OK ABCI code.
 func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
-
 	// subscribe to tx being committed in block
-	deliverTxResCh := make(chan types.EventDataTx, 1)
-	types.AddListenerForEvent(eventSwitch, "rpc", types.EventStringTx(tx), func(data types.TMEventData) {
-		deliverTxResCh <- data.Unwrap().(types.EventDataTx)
-	})
+	deliverTxResCh := eventsSub.Subscribe(types.EventQueryTx(tx))
 
 	// broadcast the tx and register checktx callback
 	checkTxResCh := make(chan *abci.Response, 1)
@@ -78,7 +74,8 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// TODO: configurable?
 	timer := time.NewTimer(60 * 2 * time.Second)
 	select {
-	case deliverTxRes := <-deliverTxResCh:
+	case deliverTxResMsg := <-deliverTxResCh:
+		deliverTxRes := deliverTxResMsg.(types.TMEventData).Unwrap().(types.EventDataTx)
 		// The tx was included in a block.
 		deliverTxR := &abci.ResponseDeliverTx{
 			Code: deliverTxRes.Code,

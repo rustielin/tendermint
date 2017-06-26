@@ -22,6 +22,7 @@ import (
 	. "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tmlibs/pubsub"
 
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/example/dummy"
@@ -207,11 +208,10 @@ func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lo
 
 // genesis
 func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
-	voteCh0 := subscribeToEvent(cs.evsw, "tester", types.EventStringVote(), 1)
+	voteCh0 := cs.pubsub.Subscribe(types.EventQueryVote)
 	voteCh := make(chan interface{})
 	go func() {
-		for {
-			v := <-voteCh0
+		for v := range voteCh0 {
 			vote := v.(types.TMEventData).Unwrap().(types.EventDataVote)
 			// we only fire for our own votes
 			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
@@ -248,10 +248,11 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv *ty
 	cs.SetLogger(log.TestingLogger())
 	cs.SetPrivValidator(pv)
 
-	evsw := types.NewEventSwitch()
-	evsw.SetLogger(log.TestingLogger().With("module", "events"))
-	cs.SetEventSwitch(evsw)
-	evsw.Start()
+	eventsServer := pubsub.NewServer(1)
+	eventsServer.SetLogger(log.TestingLogger().With("module", "events"))
+	eventsServer.Start()
+	cs.SetEventsPubsub(eventsServer)
+
 	return cs
 }
 

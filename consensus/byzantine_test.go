@@ -8,7 +8,9 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	. "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/events"
+	"github.com/tendermint/tmlibs/pubsub"
+
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -50,7 +52,6 @@ func TestByzantine(t *testing.T) {
 		}
 	}()
 	eventChans := make([]chan interface{}, N)
-	eventLogger := logger.With("module", "events")
 	for i := 0; i < N; i++ {
 		if i == 0 {
 			css[i].privValidator = NewByzantinePrivValidator(css[i].privValidator.(*types.PrivValidator))
@@ -63,17 +64,16 @@ func TestByzantine(t *testing.T) {
 			css[i].doPrevote = func(height, round int) {}
 		}
 
-		eventSwitch := events.NewEventSwitch()
-		eventSwitch.SetLogger(eventLogger.With("validator", i))
-		_, err := eventSwitch.Start()
-		if err != nil {
-			t.Fatalf("Failed to start switch: %v", err)
-		}
-		eventChans[i] = subscribeToEvent(eventSwitch, "tester", types.EventStringNewBlock(), 1)
+		eventsPubsub := pubsub.NewServer(1)
+		eventsPubsub.SetLogger(logger.With("module", "pubsub", "validator", i))
+		_, err := eventsPubsub.Start()
+		require.NoError(t, err)
+
+		eventChans[i] = eventsPubsub.Subscribe(types.EventQueryNewBlock)
 
 		conR := NewConsensusReactor(css[i], true) // so we dont start the consensus states
 		conR.SetLogger(logger.With("validator", i))
-		conR.SetEventSwitch(eventSwitch)
+		conR.SetEventsPubsub(eventsPubsub)
 
 		var conRI p2p.Reactor
 		conRI = conR

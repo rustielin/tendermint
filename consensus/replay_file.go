@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/pubsub"
 )
 
 //--------------------------------------------------------
@@ -41,7 +42,7 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 	cs.startForReplay()
 
 	// ensure all new step events are regenerated as expected
-	newStepCh := subscribeToEvent(cs.evsw, "replay-test", types.EventStringNewRoundStep(), 1)
+	newStepCh := cs.pubsub.Subscribe(types.EventQueryNewRoundStep)
 
 	// just open the file for reading, no need to use wal
 	fp, err := os.OpenFile(file, os.O_RDONLY, 0666)
@@ -97,12 +98,11 @@ func newPlayback(fileName string, fp *os.File, cs *ConsensusState, genState *sm.
 
 // go back count steps by resetting the state and running (pb.count - count) steps
 func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
-
 	pb.cs.Stop()
 	pb.cs.Wait()
 
 	newCS := NewConsensusState(pb.cs.config, pb.genesisState.Copy(), pb.cs.proxyAppConn, pb.cs.blockStore, pb.cs.mempool)
-	newCS.SetEventSwitch(pb.cs.evsw)
+	newCS.SetEventsPubsub(pb.cs.pubsub)
 	newCS.startForReplay()
 
 	pb.fp.Close()
@@ -181,7 +181,7 @@ func (pb *playback) replayConsoleLoop() int {
 			// so we restart and replay up to
 
 			// ensure all new step events are regenerated as expected
-			newStepCh := subscribeToEvent(pb.cs.evsw, "replay-test", types.EventStringNewRoundStep(), 1)
+			newStepCh := pb.cs.pubsub.Subscribe(types.EventQueryNewRoundStep)
 			if len(tokens) == 1 {
 				pb.replayReset(1, newStepCh)
 			} else {
@@ -252,13 +252,13 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	}
 
 	// Make event switch
-	eventSwitch := types.NewEventSwitch()
-	if _, err := eventSwitch.Start(); err != nil {
-		cmn.Exit(cmn.Fmt("Failed to start event switch: %v", err))
+	eventsServer := pubsub.NewServer(1)
+	if _, err := eventsServer.Start(); err != nil {
+		cmn.Exit(cmn.Fmt("Failed to start event server: %v", err))
 	}
 
 	consensusState := NewConsensusState(csConfig, state.Copy(), proxyApp.Consensus(), blockStore, types.MockMempool{})
 
-	consensusState.SetEventSwitch(eventSwitch)
+	consensusState.SetEventsPubsub(eventsServer)
 	return consensusState
 }

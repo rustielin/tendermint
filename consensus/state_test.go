@@ -55,8 +55,8 @@ func TestProposerSelection0(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	height, round := cs1.Height, cs1.Round
 
-	newRoundCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewRound(), 1)
-	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
+	newRoundCh := cs1.pubsub.Subscribe(types.EventQueryNewRound)
+	proposalCh := cs1.pubsub.Subscribe(types.EventQueryCompleteProposal)
 
 	startTestRound(cs1, height, round)
 
@@ -88,7 +88,7 @@ func TestProposerSelection0(t *testing.T) {
 func TestProposerSelection2(t *testing.T) {
 	cs1, vss := randConsensusState(4) // test needs more work for more than 3 validators
 
-	newRoundCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewRound(), 1)
+	newRoundCh := cs1.pubsub.Subscribe(types.EventQueryNewRound)
 
 	// this time we jump in at round 2
 	incrementRound(vss[1:]...)
@@ -120,7 +120,7 @@ func TestEnterProposeNoPrivValidator(t *testing.T) {
 	height, round := cs.Height, cs.Round
 
 	// Listen for propose timeout event
-	timeoutCh := subscribeToEvent(cs.evsw, "tester", types.EventStringTimeoutPropose(), 1)
+	timeoutCh := cs.pubsub.Subscribe(types.EventQueryTimeoutPropose)
 
 	startTestRound(cs, height, round)
 
@@ -145,8 +145,8 @@ func TestEnterProposeYesPrivValidator(t *testing.T) {
 
 	// Listen for propose timeout event
 
-	timeoutCh := subscribeToEvent(cs.evsw, "tester", types.EventStringTimeoutPropose(), 1)
-	proposalCh := subscribeToEvent(cs.evsw, "tester", types.EventStringCompleteProposal(), 1)
+	timeoutCh := cs.pubsub.Subscribe(types.EventQueryTimeoutPropose)
+	proposalCh := cs.pubsub.Subscribe(types.EventQueryCompleteProposal)
 
 	cs.enterNewRound(height, round)
 	cs.startRoutines(3)
@@ -182,8 +182,8 @@ func TestBadProposal(t *testing.T) {
 
 	partSize := config.Consensus.BlockPartSize
 
-	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
-	voteCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringVote(), 1)
+	proposalCh := cs1.pubsub.Subscribe(types.EventQueryCompleteProposal)
+	voteCh := cs1.pubsub.Subscribe(types.EventQueryVote)
 
 	propBlock, _ := cs1.createProposalBlock() //changeProposer(t, cs1, vs2)
 
@@ -237,9 +237,9 @@ func TestFullRound1(t *testing.T) {
 	cs, vss := randConsensusState(1)
 	height, round := cs.Height, cs.Round
 
-	voteCh := subscribeToEvent(cs.evsw, "tester", types.EventStringVote(), 0)
-	propCh := subscribeToEvent(cs.evsw, "tester", types.EventStringCompleteProposal(), 1)
-	newRoundCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewRound(), 1)
+	voteCh := cs.pubsub.Subscribe(types.EventQueryVote)
+	propCh := cs.pubsub.Subscribe(types.EventQueryCompleteProposal)
+	newRoundCh := cs.pubsub.Subscribe(types.EventQueryNewRound)
 
 	startTestRound(cs, height, round)
 
@@ -267,7 +267,7 @@ func TestFullRoundNil(t *testing.T) {
 	cs, vss := randConsensusState(1)
 	height, round := cs.Height, cs.Round
 
-	voteCh := subscribeToEvent(cs.evsw, "tester", types.EventStringVote(), 1)
+	voteCh := cs.pubsub.Subscribe(types.EventQueryVote)
 
 	cs.enterPrevote(height, round)
 	cs.startRoutines(4)
@@ -286,8 +286,8 @@ func TestFullRound2(t *testing.T) {
 	vs2 := vss[1]
 	height, round := cs1.Height, cs1.Round
 
-	voteCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringVote(), 1)
-	newBlockCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewBlock(), 1)
+	voteCh := cs1.pubsub.Subscribe(types.EventQueryVote)
+	newBlockCh := cs1.pubsub.Subscribe(types.EventQueryNewBlock)
 
 	// start round and wait for propose and prevote
 	startTestRound(cs1, height, round)
@@ -329,11 +329,11 @@ func TestLockNoPOL(t *testing.T) {
 
 	partSize := config.Consensus.BlockPartSize
 
-	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
-	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
-	voteCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringVote(), 1)
-	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
-	newRoundCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewRound(), 1)
+	timeoutProposeCh := cs1.pubsub.Subscribe(types.EventQueryTimeoutPropose)
+	timeoutWaitCh := cs1.pubsub.Subscribe(types.EventQueryTimeoutWait)
+	voteCh := cs1.pubsub.Subscribe(types.EventQueryVote)
+	proposalCh := cs1.pubsub.Subscribe(types.EventQueryCompleteProposal)
+	newRoundCh := cs1.pubsub.Subscribe(types.EventQueryNewRound)
 
 	/*
 		Round1 (cs1, B) // B B // B B2
@@ -495,12 +495,12 @@ func TestLockPOLRelock(t *testing.T) {
 
 	partSize := config.Consensus.BlockPartSize
 
-	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
-	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
-	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
-	voteCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringVote(), 1)
-	newRoundCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewRound(), 1)
-	newBlockCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewBlockHeader(), 1)
+	timeoutProposeCh := cs1.pubsub.Subscribe(types.EventQueryTimeoutPropose)
+	timeoutWaitCh := cs1.pubsub.Subscribe(types.EventQueryTimeoutWait)
+	proposalCh := cs1.pubsub.Subscribe(types.EventQueryCompleteProposal)
+	voteCh := cs1.pubsub.Subscribe(types.EventQueryVote)
+	newRoundCh := cs1.pubsub.Subscribe(types.EventQueryNewRound)
+	newBlockCh := cs1.pubsub.Subscribe(types.EventQueryNewBlockHeader)
 
 	t.Logf("vs2 last round %v", vs2.PrivValidator.LastRound)
 
@@ -610,11 +610,11 @@ func TestLockPOLUnlock(t *testing.T) {
 
 	partSize := config.Consensus.BlockPartSize
 
-	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
-	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
-	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
-	newRoundCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewRound(), 1)
-	unlockCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringUnlock(), 1)
+	proposalCh := cs1.pubsub.Subscribe(types.EventQueryCompleteProposal)
+	timeoutProposeCh := cs1.pubsub.Subscribe(types.EventQueryTimeoutPropose)
+	timeoutWaitCh := cs1.pubsub.Subscribe(types.EventQueryTimeoutWait)
+	newRoundCh := cs1.pubsub.Subscribe(types.EventQueryNewRound)
+	unlockCh := cs1.pubsub.Subscribe(types.EventQueryUnlock)
 	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
 
 	// everything done from perspective of cs1
@@ -705,10 +705,10 @@ func TestLockPOLSafety1(t *testing.T) {
 
 	partSize := config.Consensus.BlockPartSize
 
-	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
-	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
-	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
-	newRoundCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewRound(), 1)
+	proposalCh := cs1.pubsub.Subscribe(types.EventQueryCompleteProposal)
+	timeoutProposeCh := cs1.pubsub.Subscribe(types.EventQueryTimeoutPropose)
+	timeoutWaitCh := cs1.pubsub.Subscribe(types.EventQueryTimeoutWait)
+	newRoundCh := cs1.pubsub.Subscribe(types.EventQueryNewRound)
 	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
 
 	// start round and wait for propose and prevote
@@ -803,7 +803,7 @@ func TestLockPOLSafety1(t *testing.T) {
 	// we should prevote what we're locked on
 	validatePrevote(t, cs1, 2, vss[0], propBlockHash)
 
-	newStepCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewRoundStep(), 1)
+	newStepCh := cs1.pubsub.Subscribe(types.EventQueryNewRoundStep)
 
 	// add prevotes from the earlier round
 	addVotes(cs1, prevotes...)
@@ -826,11 +826,11 @@ func TestLockPOLSafety2(t *testing.T) {
 
 	partSize := config.Consensus.BlockPartSize
 
-	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
-	timeoutProposeCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutPropose(), 1)
-	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
-	newRoundCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewRound(), 1)
-	unlockCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringUnlock(), 1)
+	proposalCh := cs1.pubsub.Subscribe(types.EventQueryCompleteProposal)
+	timeoutProposeCh := cs1.pubsub.Subscribe(types.EventQueryTimeoutPropose)
+	timeoutWaitCh := cs1.pubsub.Subscribe(types.EventQueryTimeoutWait)
+	newRoundCh := cs1.pubsub.Subscribe(types.EventQueryNewRound)
+	unlockCh := cs1.pubsub.Subscribe(types.EventQueryUnlock)
 	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
 
 	// the block for R0: gets polkad but we miss it
@@ -920,9 +920,9 @@ func TestSlashingPrevotes(t *testing.T) {
 	vs2 := vss[1]
 
 
-	proposalCh := subscribeToEvent(cs1.evsw,"tester",types.EventStringCompleteProposal() , 1)
-	timeoutWaitCh := subscribeToEvent(cs1.evsw,"tester",types.EventStringTimeoutWait() , 1)
-	newRoundCh := subscribeToEvent(cs1.evsw,"tester",types.EventStringNewRound() , 1)
+	proposalCh := cs1.pubsub.Subscribe(types.EventQueryCompleteProposal)
+	timeoutWaitCh := cs1.pubsub.Subscribe(types.EventQueryTimeoutWait)
+	newRoundCh := cs1.pubsub.Subscribe(types.EventQueryNewRound)
 	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
 
 	// start round and wait for propose and prevote
@@ -955,9 +955,9 @@ func TestSlashingPrecommits(t *testing.T) {
 	vs2 := vss[1]
 
 
-	proposalCh := subscribeToEvent(cs1.evsw,"tester",types.EventStringCompleteProposal() , 1)
-	timeoutWaitCh := subscribeToEvent(cs1.evsw,"tester",types.EventStringTimeoutWait() , 1)
-	newRoundCh := subscribeToEvent(cs1.evsw,"tester",types.EventStringNewRound() , 1)
+	proposalCh := cs1.pubsub.Subscribe(types.EventQueryCompleteProposal)
+	timeoutWaitCh := cs1.pubsub.Subscribe(types.EventQueryTimeoutWait)
+	newRoundCh := cs1.pubsub.Subscribe(types.EventQueryNewRound)
 	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
 
 	// start round and wait for propose and prevote
@@ -1001,10 +1001,10 @@ func TestHalt1(t *testing.T) {
 
 	partSize := config.Consensus.BlockPartSize
 
-	proposalCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringCompleteProposal(), 1)
-	timeoutWaitCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringTimeoutWait(), 1)
-	newRoundCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewRound(), 1)
-	newBlockCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewBlock(), 1)
+	proposalCh := cs1.pubsub.Subscribe(types.EventQueryCompleteProposal)
+	timeoutWaitCh := cs1.pubsub.Subscribe(types.EventQueryTimeoutWait)
+	newRoundCh := cs1.pubsub.Subscribe(types.EventQueryNewRound)
+	newBlockCh := cs1.pubsub.Subscribe(types.EventQueryNewBlock)
 	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
 
 	// start round and wait for propose and prevote

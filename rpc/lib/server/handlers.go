@@ -17,7 +17,6 @@ import (
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 	cmn "github.com/tendermint/tmlibs/common"
-	events "github.com/tendermint/tmlibs/events"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -356,17 +355,20 @@ type wsConnection struct {
 	pingTicker  *time.Ticker
 
 	funcMap map[string]*RPCFunc
-	evsw    events.EventSwitch
+
+	// pubsub
+	pubsubChannels map[string]chan interface{} // user subscriptions
 }
 
 // new websocket connection wrapper
-func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, evsw events.EventSwitch) *wsConnection {
+func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc) *wsConnection {
 	wsc := &wsConnection{
 		remoteAddr: baseConn.RemoteAddr().String(),
 		baseConn:   baseConn,
 		writeChan:  make(chan types.RPCResponse, writeChanCapacity), // error when full.
 		funcMap:    funcMap,
-		evsw:       evsw,
+
+		pubsubChannels: make(map[string]chan interface{}),
 	}
 	wsc.BaseService = *cmn.NewBaseService(nil, "wsConnection", wsc)
 	return wsc
@@ -405,9 +407,6 @@ func (wsc *wsConnection) OnStart() error {
 
 func (wsc *wsConnection) OnStop() {
 	wsc.BaseService.OnStop()
-	if wsc.evsw != nil {
-		wsc.evsw.RemoveListener(wsc.remoteAddr)
-	}
 	wsc.readTimeout.Stop()
 	wsc.pingTicker.Stop()
 	// The write loop closes the websocket connection
@@ -430,9 +429,32 @@ func (wsc *wsConnection) GetRemoteAddr() string {
 	return wsc.remoteAddr
 }
 
-// Implements WSRPCConnection
-func (wsc *wsConnection) GetEventSwitch() events.EventSwitch {
-	return wsc.evsw
+// AddSubscription implements WSRPCConnection by recording an event channel associated with a query.
+func (wsc *wsConnection) AddSubscription(query string, ch chan interface{}) error {
+	if _, ok := wsc.pubsubChannels[query]; ok {
+		return errors.New("already subscribed")
+	}
+	wsc.pubsubChannels[query] = ch
+	return nil
+}
+
+// DeleteSubscription implements WSRPCConnection by removing a subscription.
+func (wsc *wsConnection) DeleteSubscription(query string) chan interface{} {
+	if ch, ok := wsc.pubsubChannels[query]; ok {
+		delete(wsc.pubsubChannels, query)
+		return ch
+	}
+	return nil
+}
+
+// DeleteAllSubscriptions implements WSRPCConnection by removing all subscriptions.
+func (wsc *wsConnection) DeleteAllSubscriptions() []chan interface{} {
+	channels := make([]chan interface{}, 0)
+	for query, ch := range wsc.pubsubChannels {
+		delete(wsc.pubsubChannels, query)
+		channels = append(channels, ch)
+	}
+	return channels
 }
 
 // Implements WSRPCConnection
@@ -571,14 +593,12 @@ func (wsc *wsConnection) writeMessageWithDeadline(msgType int, msg []byte) error
 type WebsocketManager struct {
 	websocket.Upgrader
 	funcMap map[string]*RPCFunc
-	evsw    events.EventSwitch
 	logger  log.Logger
 }
 
-func NewWebsocketManager(funcMap map[string]*RPCFunc, evsw events.EventSwitch) *WebsocketManager {
+func NewWebsocketManager(funcMap map[string]*RPCFunc) *WebsocketManager {
 	return &WebsocketManager{
 		funcMap: funcMap,
-		evsw:    evsw,
 		Upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -605,7 +625,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	// register connection
-	con := NewWSConnection(wsConn, wm.funcMap, wm.evsw)
+	con := NewWSConnection(wsConn, wm.funcMap)
 	con.SetLogger(wm.logger)
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
 	con.Start() // Blocking

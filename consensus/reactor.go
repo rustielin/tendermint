@@ -34,7 +34,7 @@ type ConsensusReactor struct {
 
 	conS     *ConsensusState
 	fastSync bool
-	evsw     types.EventSwitch
+	pubsub   types.EventsPubsub
 }
 
 // NewConsensusReactor returns a new ConsensusReactor with the given consensusState.
@@ -53,7 +53,7 @@ func (conR *ConsensusReactor) OnStart() error {
 	conR.BaseReactor.OnStart()
 
 	// callbacks for broadcasting new steps and votes to peers
-	// upon their respective events (ie. uses evsw)
+	// upon their respective events (ie. uses pubsub)
 	conR.registerEventCallbacks()
 
 	if !conR.fastSync {
@@ -290,10 +290,10 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 	}
 }
 
-// SetEventSwitch implements events.Eventable
-func (conR *ConsensusReactor) SetEventSwitch(evsw types.EventSwitch) {
-	conR.evsw = evsw
-	conR.conS.SetEventSwitch(evsw)
+// SetEventsPubsub sets event publisher and subscriber.
+func (conR *ConsensusReactor) SetEventsPubsub(pubsub types.EventsPubsub) {
+	conR.pubsub = pubsub
+	conR.conS.SetEventsPubsub(pubsub)
 }
 
 //--------------------------------------
@@ -301,16 +301,24 @@ func (conR *ConsensusReactor) SetEventSwitch(evsw types.EventSwitch) {
 // Listens for new steps and votes,
 // broadcasting the result to peers
 func (conR *ConsensusReactor) registerEventCallbacks() {
-
-	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringNewRoundStep(), func(data types.TMEventData) {
-		rs := data.Unwrap().(types.EventDataRoundState).RoundState.(*RoundState)
-		conR.broadcastNewRoundStep(rs)
-	})
-
-	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringVote(), func(data types.TMEventData) {
-		edv := data.Unwrap().(types.EventDataVote)
-		conR.broadcastHasVoteMessage(edv.Vote)
-	})
+	stepsCh := conR.pubsub.Subscribe(types.EventQueryNewRoundStep)
+	votesCh := conR.pubsub.Subscribe(types.EventQueryVote)
+	go func() {
+		for {
+			select {
+			case data := <-stepsCh:
+				edrs := data.(types.TMEventData).Unwrap().(types.EventDataRoundState)
+				conR.broadcastNewRoundStep(edrs.RoundState.(*RoundState))
+			case data := <-votesCh:
+				edv := data.(types.TMEventData).Unwrap().(types.EventDataVote)
+				conR.broadcastHasVoteMessage(edv.Vote)
+			case <-conR.Quit:
+				conR.pubsub.Unsubscribe(stepsCh)
+				conR.pubsub.Unsubscribe(votesCh)
+				return
+			}
+		}
+	}()
 }
 
 func (conR *ConsensusReactor) broadcastNewRoundStep(rs *RoundState) {

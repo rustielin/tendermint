@@ -24,7 +24,7 @@ powerful control during testing, you probably want the "client/mock" package.
 */
 type Local struct {
 	node *nm.Node
-	types.EventSwitch
+	types.EventsPubsub
 }
 
 // NewLocal configures a client that calls the Node directly.
@@ -36,8 +36,8 @@ type Local struct {
 func NewLocal(node *nm.Node) Local {
 	node.ConfigureRPC()
 	return Local{
-		node:        node,
-		EventSwitch: node.EventSwitch(),
+		node:         node,
+		EventsPubsub: node.EventsPubsub(),
 	}
 }
 
