@@ -229,17 +229,17 @@ func TestWALCrashBeforeWritePropose(t *testing.T) {
 	}
 }
 
-func TestWALCrashBeforeWritePrevote(t *testing.T) {
-	for _, thisCase := range testCases {
-		testReplayCrashBeforeWriteVote(t, thisCase, thisCase.prevoteLine, types.EventQueryCompleteProposal)
-	}
-}
+// func TestWALCrashBeforeWritePrevote(t *testing.T) {
+// 	for _, thisCase := range testCases {
+// 		testReplayCrashBeforeWriteVote(t, thisCase, thisCase.prevoteLine, types.EventQueryCompleteProposal)
+// 	}
+// }
 
-func TestWALCrashBeforeWritePrecommit(t *testing.T) {
-	for _, thisCase := range testCases {
-		testReplayCrashBeforeWriteVote(t, thisCase, thisCase.precommitLine, types.EventQueryPolka)
-	}
-}
+// func TestWALCrashBeforeWritePrecommit(t *testing.T) {
+// 	for _, thisCase := range testCases {
+// 		testReplayCrashBeforeWriteVote(t, thisCase, thisCase.precommitLine, types.EventQueryPolka)
+// 	}
+// }
 
 func testReplayCrashBeforeWriteVote(t *testing.T, thisCase *testCase, lineNum int, eventQuery pubsub.Query) {
 	// setup replay test where last message is a vote
