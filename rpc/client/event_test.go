@@ -112,7 +112,7 @@ func TestTxEventsSentWithBroadcastTxSync(t *testing.T) {
 		_, _, tx := merktest.MakeTxKV()
 		evtTyp := types.EventStringTx(types.Tx(tx))
 
-		// send async
+		// send sync
 		txres, err := c.BroadcastTxSync(tx)
 		require.Nil(err, "%+v", err)
 		require.True(txres.Code.IsOK())

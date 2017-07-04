@@ -1,11 +1,14 @@
 package client
 
 import (
+	"github.com/pkg/errors"
+
 	data "github.com/tendermint/go-wire/data"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
+	pquery "github.com/tendermint/tmlibs/pubsub/query"
 )
 
 /*
@@ -25,6 +28,7 @@ powerful control during testing, you probably want the "client/mock" package.
 type Local struct {
 	node *nm.Node
 	types.EventsPubsub
+	subscriptions map[string]chan interface{}
 }
 
 // NewLocal configures a client that calls the Node directly.
@@ -36,8 +40,9 @@ type Local struct {
 func NewLocal(node *nm.Node) Local {
 	node.ConfigureRPC()
 	return Local{
-		node:         node,
-		EventsPubsub: node.EventsPubsub(),
+		node:          node,
+		EventsPubsub:  node.EventsPubsub(),
+		subscriptions: make(map[string]chan interface{}),
 	}
 }
 
@@ -107,4 +112,41 @@ func (c Local) Validators() (*ctypes.ResultValidators, error) {
 
 func (c Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return core.Tx(hash, prove)
+}
+
+func (c Local) Subscribe(query string, out chan<- types.TMEventData) error {
+	if _, ok := c.subscriptions[query]; ok {
+		return errors.New("already subscribed")
+	}
+
+	q, err := pquery.New(query)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse query")
+	}
+
+	ch := c.EventsPubsub.Subscribe(q)
+	go func() {
+		for e := range ch {
+			if ed, ok := e.(types.TMEventData); ok {
+				out <- ed
+			}
+		}
+	}()
+	c.subscriptions[query] = ch
+
+	return nil
+}
+
+func (c Local) Unsubscribe(query string) {
+	if ch, ok := c.subscriptions[query]; ok {
+		c.EventsPubsub.Unsubscribe(ch)
+		delete(c.subscriptions, query)
+	}
+}
+
+func (c Local) UnsubscribeAll() {
+	for _, ch := range c.subscriptions {
+		c.EventsPubsub.Unsubscribe(ch)
+		c.subscriptions = make(map[string]chan interface{})
+	}
 }
