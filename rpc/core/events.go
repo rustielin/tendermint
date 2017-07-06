@@ -15,9 +15,9 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse a query")
 	}
-	ch := eventsSub.Subscribe(q)
+	ch := pubsub.Subscribe(q)
 	if err = wsCtx.AddSubscription(query, ch); err != nil {
-		eventsSub.Unsubscribe(ch)
+		pubsub.Unsubscribe(ch)
 		return nil, err
 	}
 	go func() {
@@ -26,7 +26,7 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 				tmResult := &ctypes.ResultEvent{query, event.(tmtypes.TMEventData)}
 				wsCtx.TryWriteRPCResponse(rpctypes.NewRPCResponse(wsCtx.Request.ID+"#event", tmResult, ""))
 			} else {
-				eventsSub.Unsubscribe(ch)
+				pubsub.Unsubscribe(ch)
 			}
 		}
 	}()
@@ -37,7 +37,7 @@ func Unsubscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultUnsub
 	logger.Info("Unsubscribe from query", "remote", wsCtx.GetRemoteAddr(), "query", query)
 	ch := wsCtx.DeleteSubscription(query)
 	if ch != nil {
-		eventsSub.Unsubscribe(ch)
+		pubsub.Unsubscribe(ch)
 	}
 	return &ctypes.ResultUnsubscribe{}, nil
 }
@@ -46,7 +46,7 @@ func UnsubscribeAll(wsCtx rpctypes.WSRPCContext) (*ctypes.ResultUnsubscribe, err
 	logger.Info("Unsubscribe from all", "remote", wsCtx.GetRemoteAddr())
 	channels := wsCtx.DeleteAllSubscriptions()
 	for _, ch := range channels {
-		eventsSub.Unsubscribe(ch)
+		pubsub.Unsubscribe(ch)
 	}
 	return &ctypes.ResultUnsubscribe{}, nil
 }
