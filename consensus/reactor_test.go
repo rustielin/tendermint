@@ -34,7 +34,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int, subscribeEven
 			t.Fatalf("Failed to start pubsub server: %v", err)
 		}
 
-		reactors[i].SetEventsPubsub(eventsPubsub)
+		reactors[i].SetPubsub(eventsPubsub)
 
 		if subscribeEventRespond {
 			eventChans[i] = eventsPubsub.Subscribe(types.EventQueryNewBlock)

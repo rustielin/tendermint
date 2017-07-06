@@ -251,8 +251,8 @@ func (cs *ConsensusState) SetLogger(l log.Logger) {
 	cs.timeoutTicker.SetLogger(l)
 }
 
-// SetEventsPubsub implements events.Eventable
-func (cs *ConsensusState) SetEventsPubsub(pubsub types.EventsPubsub) {
+// SetPubsub implements events.Eventable
+func (cs *ConsensusState) SetPubsub(pubsub types.EventsPubsub) {
 	cs.pubsub = pubsub
 }
 

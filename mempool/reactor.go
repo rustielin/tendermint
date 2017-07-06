@@ -141,8 +141,8 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
 	}
 }
 
-// SetEventsPubsub implements events.Eventable
-func (memR *MempoolReactor) SetEventsPubsub(pubsub types.EventsPublisher) {
+// SetPubsub implements events.Eventable
+func (memR *MempoolReactor) SetPubsub(pubsub types.EventsPublisher) {
 	memR.pubsub = pubsub
 }
 

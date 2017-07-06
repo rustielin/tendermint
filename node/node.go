@@ -29,13 +29,13 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
-	"github.com/tendermint/tmlibs/pubsub"
+	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 
 	_ "net/http/pprof"
 )
 
 const (
-	maxQueuedEventsPerSubscriber = 1000
+	pubsubServerCapacity = 1000
 )
 
 type Node struct {
@@ -52,7 +52,7 @@ type Node struct {
 	addrBook *p2p.AddrBook         // known peers
 
 	// services
-	eventsPubsub     *pubsub.Server              // pub/sub for services
+	pubsub           *tmpubsub.Server            // pub/sub for services
 	blockStore       *bc.BlockStore              // store the blockchain to disk
 	bcReactor        *bc.BlockchainReactor       // for fast-syncing
 	mempoolReactor   *mempl.MempoolReactor       // for gossipping transactions
@@ -193,17 +193,17 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 		})
 	}
 
-	pubsubServer := pubsub.NewServer(maxQueuedEventsPerSubscriber)
-	pubsubServer.SetLogger(logger.With("module", "pubsub"))
-	_, err := pubsubServer.Start()
+	pubsub := tmpubsub.NewServer(pubsubServerCapacity)
+	pubsub.SetLogger(logger.With("module", "pubsub"))
+	_, err := pubsub.Start()
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Failed to start pubsub: %v", err))
 	}
 
-	// services which will be publishing events
-	bcReactor.SetEventsPubsub(pubsubServer)
-	mempoolReactor.SetEventsPubsub(pubsubServer)
-	consensusReactor.SetEventsPubsub(pubsubServer) // also subscribes to events
+	// services which will be publishing and/or subscribing for messages (events)
+	bcReactor.SetPubsub(pubsub)
+	mempoolReactor.SetPubsub(pubsub)
+	consensusReactor.SetPubsub(pubsub)
 
 	// run the profile server
 	profileHost := config.ProfListenAddress
@@ -230,7 +230,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 		consensusReactor: consensusReactor,
 		proxyApp:         proxyApp,
 		txIndexer:        txIndexer,
-		eventsPubsub:     pubsubServer,
+		pubsub:           pubsub,
 	}
 	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
 	return node
@@ -312,7 +312,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 	rpccore.SetTxIndexer(n.txIndexer)
-	rpccore.SetEventsPubsub(n.eventsPubsub)
+	rpccore.SetPubsub(n.pubsub)
 	rpccore.SetLogger(n.Logger.With("module", "rpc"))
 }
 
@@ -374,7 +374,7 @@ func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 }
 
 func (n *Node) EventsPubsub() types.EventsPubsub {
-	return n.eventsPubsub
+	return n.pubsub
 }
 
 // XXX: for convenience

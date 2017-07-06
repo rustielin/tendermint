@@ -290,10 +290,10 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 	}
 }
 
-// SetEventsPubsub sets event publisher and subscriber.
-func (conR *ConsensusReactor) SetEventsPubsub(pubsub types.EventsPubsub) {
+// SetPubsub sets event publisher and subscriber.
+func (conR *ConsensusReactor) SetPubsub(pubsub types.EventsPubsub) {
 	conR.pubsub = pubsub
-	conR.conS.SetEventsPubsub(pubsub)
+	conR.conS.SetPubsub(pubsub)
 }
 
 //--------------------------------------

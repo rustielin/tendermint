@@ -73,7 +73,7 @@ func TestByzantine(t *testing.T) {
 
 		conR := NewConsensusReactor(css[i], true) // so we dont start the consensus states
 		conR.SetLogger(logger.With("validator", i))
-		conR.SetEventsPubsub(eventsPubsub)
+		conR.SetPubsub(eventsPubsub)
 
 		var conRI p2p.Reactor
 		conRI = conR

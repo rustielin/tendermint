@@ -89,6 +89,7 @@ func SetLogger(l log.Logger) {
 	logger = l
 }
 
-func SetEventsPubsub(s types.EventsSubscriber) {
+func SetPubsub(s types.EventsSubscriber) {
 	eventsSub = s
 }
+

@@ -251,7 +251,7 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv *ty
 	eventsServer := pubsub.NewServer(1)
 	eventsServer.SetLogger(log.TestingLogger().With("module", "events"))
 	eventsServer.Start()
-	cs.SetEventsPubsub(eventsServer)
+	cs.SetPubsub(eventsServer)
 
 	return cs
 }

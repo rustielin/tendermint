@@ -312,7 +312,7 @@ func (w *WSEvents) parseEvent(data []byte) (err error) {
 }
 
 func extractEventType(query string) string {
-	re := regexp.MustCompile(types.EventKey + "=" + "([^\\s]+)")
+	re := regexp.MustCompile(types.EventTypeKey + "=" + "([^\\s]+)")
 	s := re.FindStringSubmatch(query)
 	if len(s) > 0 {
 		return s[0]

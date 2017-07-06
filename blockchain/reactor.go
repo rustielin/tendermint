@@ -262,8 +262,8 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 	return nil
 }
 
-// SetEventsPubsub sets event publisher.
-func (bcR *BlockchainReactor) SetEventsPubsub(pubsub types.EventsPublisher) {
+// SetPubsub sets event publisher.
+func (bcR *BlockchainReactor) SetPubsub(pubsub types.EventsPublisher) {
 	bcR.pubsub = pubsub
 }
 
