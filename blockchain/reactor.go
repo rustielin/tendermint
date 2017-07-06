@@ -49,7 +49,7 @@ type BlockchainReactor struct {
 	requestsCh   chan BlockRequest
 	timeoutsCh   chan string
 
-	pubsub types.EventsPublisher
+	pubsub types.PubSub
 }
 
 // NewBlockchainReactor returns new reactor instance.
@@ -263,7 +263,7 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 }
 
 // SetPubsub sets event publisher.
-func (bcR *BlockchainReactor) SetPubsub(pubsub types.EventsPublisher) {
+func (bcR *BlockchainReactor) SetPubsub(pubsub types.PubSub) {
 	bcR.pubsub = pubsub
 }
 

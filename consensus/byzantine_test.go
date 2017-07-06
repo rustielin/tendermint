@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	. "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/pubsub"
+	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 
 	"github.com/stretchr/testify/require"
 )
@@ -64,16 +64,16 @@ func TestByzantine(t *testing.T) {
 			css[i].doPrevote = func(height, round int) {}
 		}
 
-		eventsPubsub := pubsub.NewServer(1)
-		eventsPubsub.SetLogger(logger.With("module", "pubsub", "validator", i))
-		_, err := eventsPubsub.Start()
+		pubsub := tmpubsub.NewServer(1)
+		pubsub.SetLogger(logger.With("module", "pubsub", "validator", i))
+		_, err := pubsub.Start()
 		require.NoError(t, err)
 
-		eventChans[i] = eventsPubsub.Subscribe(types.EventQueryNewBlock)
+		eventChans[i] = pubsub.Subscribe(types.EventQueryNewBlock)
 
 		conR := NewConsensusReactor(css[i], true) // so we dont start the consensus states
 		conR.SetLogger(logger.With("validator", i))
-		conR.SetPubsub(eventsPubsub)
+		conR.SetPubsub(pubsub)
 
 		var conRI p2p.Reactor
 		conRI = conR

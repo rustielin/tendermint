@@ -199,7 +199,7 @@ type ConsensusState struct {
 
 	// we use PubSub to trigger msg broadcasts in the reactor,
 	// and to notify external subscribers, eg. through a websocket
-	pubsub types.EventsPubsub
+	pubsub types.PubSub
 
 	// a Write-Ahead Log ensures we can recover from any kind of crash
 	// and helps us avoid signing conflicting votes
@@ -252,7 +252,7 @@ func (cs *ConsensusState) SetLogger(l log.Logger) {
 }
 
 // SetPubsub implements events.Eventable
-func (cs *ConsensusState) SetPubsub(pubsub types.EventsPubsub) {
+func (cs *ConsensusState) SetPubsub(pubsub types.PubSub) {
 	cs.pubsub = pubsub
 }
 

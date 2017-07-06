@@ -23,7 +23,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tmlibs/log"
-	"github.com/tendermint/tmlibs/pubsub"
+	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 )
 
 func init() {
@@ -241,7 +241,7 @@ func TestWALCrashBeforeWritePropose(t *testing.T) {
 // 	}
 // }
 
-func testReplayCrashBeforeWriteVote(t *testing.T, thisCase *testCase, lineNum int, eventQuery pubsub.Query) {
+func testReplayCrashBeforeWriteVote(t *testing.T, thisCase *testCase, lineNum int, eventQuery tmpubsub.Query) {
 	// setup replay test where last message is a vote
 	cs, newBlockCh, voteMsg, walFile := setupReplayTest(t, thisCase, lineNum, false)
 	eventCh := cs.pubsub.Subscribe(eventQuery)

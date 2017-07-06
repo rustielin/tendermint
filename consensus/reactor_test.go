@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmlibs/pubsub"
+	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 )
 
 func init() {
@@ -27,17 +27,17 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int, subscribeEven
 		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
 		reactors[i].SetLogger(logger.With("validator", i))
 
-		eventsPubsub := pubsub.NewServer(1)
-		eventsPubsub.SetLogger(logger.With("module", "events", "validator", i))
-		_, err := eventsPubsub.Start()
+		pubsub := tmpubsub.NewServer(1)
+		pubsub.SetLogger(logger.With("module", "pubsub", "validator", i))
+		_, err := pubsub.Start()
 		if err != nil {
 			t.Fatalf("Failed to start pubsub server: %v", err)
 		}
 
-		reactors[i].SetPubsub(eventsPubsub)
+		reactors[i].SetPubsub(pubsub)
 
 		if subscribeEventRespond {
-			eventChans[i] = eventsPubsub.Subscribe(types.EventQueryNewBlock)
+			eventChans[i] = pubsub.Subscribe(types.EventQueryNewBlock)
 			go func(ch chan interface{}) {
 				for data := range ch {
 					ch <- data
@@ -45,7 +45,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int, subscribeEven
 				}
 			}(eventChans[i])
 		} else {
-			eventChans[i] = eventsPubsub.Subscribe(types.EventQueryNewBlock)
+			eventChans[i] = pubsub.Subscribe(types.EventQueryNewBlock)
 		}
 	}
 	// make connected switches and start all reactors

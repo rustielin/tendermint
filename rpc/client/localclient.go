@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-	pquery "github.com/tendermint/tmlibs/pubsub/query"
+	tmquery "github.com/tendermint/tmlibs/pubsub/query"
 )
 
 /*
@@ -27,7 +27,7 @@ powerful control during testing, you probably want the "client/mock" package.
 */
 type Local struct {
 	node *nm.Node
-	types.EventsPubsub
+	types.PubSub
 	subscriptions map[string]chan interface{}
 }
 
@@ -41,7 +41,7 @@ func NewLocal(node *nm.Node) Local {
 	node.ConfigureRPC()
 	return Local{
 		node:          node,
-		EventsPubsub:  node.EventsPubsub(),
+		PubSub:        node.PubSub(),
 		subscriptions: make(map[string]chan interface{}),
 	}
 }
@@ -119,12 +119,12 @@ func (c Local) Subscribe(query string, out chan<- types.TMEventData) error {
 		return errors.New("already subscribed")
 	}
 
-	q, err := pquery.New(query)
+	q, err := tmquery.New(query)
 	if err != nil {
 		return errors.Wrap(err, "failed to parse query")
 	}
 
-	ch := c.EventsPubsub.Subscribe(q)
+	ch := c.PubSub.Subscribe(q)
 	go func() {
 		for e := range ch {
 			if ed, ok := e.(types.TMEventData); ok {
@@ -139,14 +139,14 @@ func (c Local) Subscribe(query string, out chan<- types.TMEventData) error {
 
 func (c Local) Unsubscribe(query string) {
 	if ch, ok := c.subscriptions[query]; ok {
-		c.EventsPubsub.Unsubscribe(ch)
+		c.PubSub.Unsubscribe(ch)
 		delete(c.subscriptions, query)
 	}
 }
 
 func (c Local) UnsubscribeAll() {
 	for _, ch := range c.subscriptions {
-		c.EventsPubsub.Unsubscribe(ch)
+		c.PubSub.Unsubscribe(ch)
 		c.subscriptions = make(map[string]chan interface{})
 	}
 }

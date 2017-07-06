@@ -158,8 +158,8 @@ type EventsSubscriber interface {
 	Unsubscribe(chan interface{})
 }
 
-// EventsPubsub is a common interface unifying publisher and subscriber.
-type EventsPubsub interface {
+// PubSub is a common interface unifying publisher and subscriber.
+type PubSub interface {
 	EventsPublisher
 	EventsSubscriber
 	cmn.Service

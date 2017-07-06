@@ -197,7 +197,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	pubsub.SetLogger(logger.With("module", "pubsub"))
 	_, err := pubsub.Start()
 	if err != nil {
-		cmn.Exit(cmn.Fmt("Failed to start pubsub: %v", err))
+		cmn.Exit(cmn.Fmt("Failed to start pubsub server: %v", err))
 	}
 
 	// services which will be publishing and/or subscribing for messages (events)
@@ -373,7 +373,7 @@ func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 	return n.mempoolReactor
 }
 
-func (n *Node) EventsPubsub() types.EventsPubsub {
+func (n *Node) PubSub() types.PubSub {
 	return n.pubsub
 }
 

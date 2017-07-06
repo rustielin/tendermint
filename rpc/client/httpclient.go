@@ -10,7 +10,7 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmlibs/pubsub"
+	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 )
 
 /*
@@ -182,7 +182,7 @@ func (c *HTTP) Validators() (*ctypes.ResultValidators, error) {
 /** websocket event stuff here... **/
 
 type WSEvents struct {
-	types.EventsPubsub
+	types.PubSub
 	remote        string
 	endpoint      string
 	ws            *rpcclient.WSClient
@@ -195,7 +195,7 @@ type WSEvents struct {
 
 func newWSEvents(remote, endpoint string) *WSEvents {
 	return &WSEvents{
-		EventsPubsub:  pubsub.NewServer(1000), // should be configurable
+		PubSub:        tmpubsub.NewServer(1000), // should be configurable
 		endpoint:      endpoint,
 		remote:        remote,
 		subscriptions: make(map[string]chan<- types.TMEventData),
@@ -208,7 +208,7 @@ func newWSEvents(remote, endpoint string) *WSEvents {
 // events.eventSwitch.  If only it wasn't private...
 // BaseService.Start -> eventSwitch.OnStart -> WSEvents.Start
 func (w *WSEvents) Start() (bool, error) {
-	st, err := w.EventsPubsub.Start()
+	st, err := w.PubSub.Start()
 	// if we did start, then OnStart here...
 	if st && err == nil {
 		ws := rpcclient.NewWSClient(w.remote, w.endpoint)
@@ -223,7 +223,7 @@ func (w *WSEvents) Start() (bool, error) {
 
 // Stop wraps the BaseService/eventSwitch actions as Start does
 func (w *WSEvents) Stop() bool {
-	stop := w.EventsPubsub.Stop()
+	stop := w.PubSub.Stop()
 	if stop {
 		// send a message to quit to stop the eventListener
 		w.quit <- true

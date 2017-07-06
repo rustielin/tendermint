@@ -22,7 +22,7 @@ import (
 	. "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
-	"github.com/tendermint/tmlibs/pubsub"
+	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/example/dummy"
@@ -248,10 +248,10 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv *ty
 	cs.SetLogger(log.TestingLogger())
 	cs.SetPrivValidator(pv)
 
-	eventsServer := pubsub.NewServer(1)
-	eventsServer.SetLogger(log.TestingLogger().With("module", "events"))
-	eventsServer.Start()
-	cs.SetPubsub(eventsServer)
+	pubsub := tmpubsub.NewServer(1)
+	pubsub.SetLogger(log.TestingLogger().With("module", "pubsub"))
+	pubsub.Start()
+	cs.SetPubsub(pubsub)
 
 	return cs
 }

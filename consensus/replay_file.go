@@ -15,7 +15,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/pubsub"
+	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 )
 
 //--------------------------------------------------------
@@ -252,14 +252,13 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	}
 
 	// Make event switch
-	eventsServer := pubsub.NewServer(1)
-	if _, err := eventsServer.Start(); err != nil {
+	pubsub := tmpubsub.NewServer(1)
+	if _, err := pubsub.Start(); err != nil {
 		cmn.Exit(cmn.Fmt("Failed to start event server: %v", err))
 	}
 
 	consensusState := NewConsensusState(csConfig, state.Copy(), proxyApp.Consensus(), blockStore, types.MockMempool{})
 
-	consensusState.SetPubsub(eventsServer)
+	consensusState.SetPubsub(pubsub)
 	return consensusState
 }
-
