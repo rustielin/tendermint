@@ -202,13 +202,11 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 
 	// services which will be publishing and/or subscribing for messages (events)
 	bcReactor.SetPubsub(pubsub)
-	mempoolReactor.SetPubsub(pubsub)
 	consensusReactor.SetPubsub(pubsub)
 
 	// run the profile server
 	profileHost := config.ProfListenAddress
 	if profileHost != "" {
-
 		go func() {
 			logger.Error("Profile server", "err", http.ListenAndServe(profileHost, nil))
 		}()
