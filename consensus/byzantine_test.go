@@ -64,12 +64,13 @@ func TestByzantine(t *testing.T) {
 			css[i].doPrevote = func(height, round int) {}
 		}
 
-		pubsub := tmpubsub.NewServer(1)
+		pubsub := tmpubsub.NewServer()
 		pubsub.SetLogger(logger.With("module", "pubsub", "validator", i))
 		_, err := pubsub.Start()
 		require.NoError(t, err)
 
-		eventChans[i] = pubsub.Subscribe(types.EventQueryNewBlock)
+		eventChans[i] = make(chan interface{})
+		pubsub.Subscribe(testClientID, types.EventQueryNewBlock, eventChans[i])
 
 		conR := NewConsensusReactor(css[i], true) // so we dont start the consensus states
 		conR.SetLogger(logger.With("validator", i))

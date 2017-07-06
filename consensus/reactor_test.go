@@ -27,7 +27,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int, subscribeEven
 		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
 		reactors[i].SetLogger(logger.With("validator", i))
 
-		pubsub := tmpubsub.NewServer(1)
+		pubsub := tmpubsub.NewServer()
 		pubsub.SetLogger(logger.With("module", "pubsub", "validator", i))
 		_, err := pubsub.Start()
 		if err != nil {
@@ -36,16 +36,15 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int, subscribeEven
 
 		reactors[i].SetPubsub(pubsub)
 
+		eventChans[i] = make(chan interface{})
+		pubsub.Subscribe(testClientID, types.EventQueryNewBlock, eventChans[i])
 		if subscribeEventRespond {
-			eventChans[i] = pubsub.Subscribe(types.EventQueryNewBlock)
 			go func(ch chan interface{}) {
 				for data := range ch {
 					ch <- data
 					<-ch
 				}
 			}(eventChans[i])
-		} else {
-			eventChans[i] = pubsub.Subscribe(types.EventQueryNewBlock)
 		}
 	}
 	// make connected switches and start all reactors
@@ -100,8 +99,8 @@ func TestVotingPowerChange(t *testing.T) {
 
 	// wait till everyone makes block 1
 	timeoutWaitGroup(t, nVals, func(wg *sync.WaitGroup, j int) {
-		<-eventChans[j]
-		eventChans[j] <- struct{}{}
+		block := <-eventChans[j]
+		eventChans[j] <- block
 		wg.Done()
 	}, css)
 
@@ -270,7 +269,7 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 			css[j].mempool.CheckTx(tx, nil)
 		}
 
-		eventChans[j] <- struct{}{}
+		eventChans[j] <- newBlockI
 		wg.Done()
 	}, css)
 }

@@ -1233,7 +1233,10 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	//   Both options mean we may fire more than once. Is that fine ?
 	types.FireEventNewBlock(cs.pubsub, types.EventDataNewBlock{block})
 	types.FireEventNewBlockHeader(cs.pubsub, types.EventDataNewBlockHeader{block.Header})
-	eventBuffer.Flush()
+	err = eventBuffer.Flush()
+	if err != nil {
+		cs.Logger.Error("Failed to flush event buffer", "err", err)
+	}
 
 	fail.Fail() // XXX
 

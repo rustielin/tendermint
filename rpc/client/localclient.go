@@ -123,8 +123,8 @@ func (c Local) Subscribe(query string, out chan<- types.TMEventData) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to parse query")
 	}
-
-	ch := c.PubSub.Subscribe(q)
+	ch := make(chan interface{})
+	c.PubSub.Subscribe("rpc/client/local", q, ch)
 	go func() {
 		for e := range ch {
 			if ed, ok := e.(types.TMEventData); ok {
@@ -138,15 +138,20 @@ func (c Local) Subscribe(query string, out chan<- types.TMEventData) error {
 }
 
 func (c Local) Unsubscribe(query string) {
+	q, err := tmquery.New(query)
+	if err != nil {
+		return
+	}
+
 	if ch, ok := c.subscriptions[query]; ok {
-		c.PubSub.Unsubscribe(ch)
+		c.PubSub.Unsubscribe("rpc/client/local", q)
 		delete(c.subscriptions, query)
 	}
 }
 
 func (c Local) UnsubscribeAll() {
 	for _, ch := range c.subscriptions {
-		c.PubSub.Unsubscribe(ch)
+		c.PubSub.UnsubscribeAll("rpc/client/local")
 		c.subscriptions = make(map[string]chan interface{})
 	}
 }

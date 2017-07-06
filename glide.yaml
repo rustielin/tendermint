@@ -33,7 +33,7 @@ import:
   - iavl
   - testutil
 - package: github.com/tendermint/tmlibs
-  version: ec1a99ee1304cf87eec752a03a9d198c192b9264
+  version: 27b233834b4fd174c21f0334270618d5d903849c
   subpackages:
   - autofile
   - cli
@@ -41,10 +41,10 @@ import:
   - common
   - db
   - events
-  - events.v2
   - flowrate
   - log
   - merkle
+  - pubsub
 - package: golang.org/x/crypto
   subpackages:
   - nacl/box

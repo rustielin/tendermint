@@ -72,23 +72,16 @@ func NewRPCResponse(id string, res interface{}, err string) RPCResponse {
 
 // *wsConnection implements this interface.
 type WSRPCConnection interface {
-  IsRunning() bool
+	IsRunning() bool
 	GetRemoteAddr() string
 	WriteRPCResponse(resp RPCResponse)
 	TryWriteRPCResponse(resp RPCResponse) bool
-	pubsubClient
 }
 
 // websocket-only RPCFuncs take this as the first parameter.
 type WSRPCContext struct {
 	Request RPCRequest
 	WSRPCConnection
-}
-
-type pubsubClient interface {
-	AddSubscription(query string, ch chan interface{}) error
-	DeleteSubscription(query string) chan interface{}
-	DeleteAllSubscriptions() []chan interface{}
 }
 
 //----------------------------------------

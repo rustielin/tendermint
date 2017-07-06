@@ -429,34 +429,6 @@ func (wsc *wsConnection) GetRemoteAddr() string {
 	return wsc.remoteAddr
 }
 
-// AddSubscription implements WSRPCConnection by recording an event channel associated with a query.
-func (wsc *wsConnection) AddSubscription(query string, ch chan interface{}) error {
-	if _, ok := wsc.pubsubChannels[query]; ok {
-		return errors.New("already subscribed")
-	}
-	wsc.pubsubChannels[query] = ch
-	return nil
-}
-
-// DeleteSubscription implements WSRPCConnection by removing a subscription.
-func (wsc *wsConnection) DeleteSubscription(query string) chan interface{} {
-	if ch, ok := wsc.pubsubChannels[query]; ok {
-		delete(wsc.pubsubChannels, query)
-		return ch
-	}
-	return nil
-}
-
-// DeleteAllSubscriptions implements WSRPCConnection by removing all subscriptions.
-func (wsc *wsConnection) DeleteAllSubscriptions() []chan interface{} {
-	channels := make([]chan interface{}, 0)
-	for query, ch := range wsc.pubsubChannels {
-		delete(wsc.pubsubChannels, query)
-		channels = append(channels, ch)
-	}
-	return channels
-}
-
 // Implements WSRPCConnection
 // Blocking write to writeChan until service stops.
 // Goroutine-safe

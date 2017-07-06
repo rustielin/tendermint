@@ -34,10 +34,6 @@ import (
 	_ "net/http/pprof"
 )
 
-const (
-	pubsubServerCapacity = 1000
-)
-
 type Node struct {
 	cmn.BaseService
 
@@ -193,7 +189,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 		})
 	}
 
-	pubsub := tmpubsub.NewServer(pubsubServerCapacity)
+	pubsub := tmpubsub.NewServer(tmpubsub.BufferCapacity(1000), tmpubsub.OverflowStrategyDrop())
 	pubsub.SetLogger(logger.With("module", "pubsub"))
 	_, err := pubsub.Start()
 	if err != nil {

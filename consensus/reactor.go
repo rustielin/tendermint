@@ -301,8 +301,10 @@ func (conR *ConsensusReactor) SetPubsub(pubsub types.PubSub) {
 // Listens for new steps and votes,
 // broadcasting the result to peers
 func (conR *ConsensusReactor) registerEventCallbacks() {
-	stepsCh := conR.pubsub.Subscribe(types.EventQueryNewRoundStep)
-	votesCh := conR.pubsub.Subscribe(types.EventQueryVote)
+	stepsCh := make(chan interface{})
+	conR.pubsub.Subscribe("consensus-reactor", types.EventQueryNewRoundStep, stepsCh)
+	votesCh := make(chan interface{})
+	conR.pubsub.Subscribe("consensus-reactor", types.EventQueryVote, votesCh)
 	go func() {
 		for {
 			select {
@@ -313,8 +315,8 @@ func (conR *ConsensusReactor) registerEventCallbacks() {
 				edv := data.(types.TMEventData).Unwrap().(types.EventDataVote)
 				conR.broadcastHasVoteMessage(edv.Vote)
 			case <-conR.Quit:
-				conR.pubsub.Unsubscribe(stepsCh)
-				conR.pubsub.Unsubscribe(votesCh)
+				conR.pubsub.Unsubscribe("consensus-reactor", types.EventQueryNewRoundStep)
+				conR.pubsub.Unsubscribe("consensus-reactor", types.EventQueryVote)
 				return
 			}
 		}

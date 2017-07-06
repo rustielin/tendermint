@@ -47,7 +47,10 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // will contain a non-OK ABCI code.
 func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// subscribe to tx being committed in block
-	deliverTxResCh := pubsub.Subscribe(types.EventQueryTx(tx))
+	deliverTxResCh := make(chan interface{})
+
+	pubsub.Subscribe("mempool", types.EventQueryTx(tx), deliverTxResCh)
+	defer pubsub.Unsubscribe("mempool", types.EventQueryTx(tx))
 
 	// broadcast the tx and register checktx callback
 	checkTxResCh := make(chan *abci.Response, 1)

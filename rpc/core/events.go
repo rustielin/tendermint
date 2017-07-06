@@ -10,43 +10,45 @@ import (
 )
 
 func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscribe, error) {
-	logger.Info("Subscribe to query", "remote", wsCtx.GetRemoteAddr(), "query", query)
+	addr := wsCtx.GetRemoteAddr()
+
+	logger.Info("Subscribe to query", "remote", addr, "query", query)
 	q, err := tmquery.New(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse a query")
 	}
-	ch := pubsub.Subscribe(q)
-	if err = wsCtx.AddSubscription(query, ch); err != nil {
-		pubsub.Unsubscribe(ch)
-		return nil, err
-	}
+
+	ch := make(chan interface{}, 1000)
+	pubsub.Subscribe(addr, q, ch)
+
 	go func() {
 		for event := range ch {
 			if wsCtx.IsRunning() {
 				tmResult := &ctypes.ResultEvent{query, event.(tmtypes.TMEventData)}
-				wsCtx.TryWriteRPCResponse(rpctypes.NewRPCResponse(wsCtx.Request.ID+"#event", tmResult, ""))
+				wsCtx.WriteRPCResponse(rpctypes.NewRPCResponse(wsCtx.Request.ID+"#event", tmResult, ""))
 			} else {
-				pubsub.Unsubscribe(ch)
+				pubsub.Unsubscribe(addr, q)
 			}
 		}
 	}()
+
 	return &ctypes.ResultSubscribe{}, nil
 }
 
 func Unsubscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultUnsubscribe, error) {
-	logger.Info("Unsubscribe from query", "remote", wsCtx.GetRemoteAddr(), "query", query)
-	ch := wsCtx.DeleteSubscription(query)
-	if ch != nil {
-		pubsub.Unsubscribe(ch)
+	addr := wsCtx.GetRemoteAddr()
+	logger.Info("Unsubscribe from query", "remote", addr, "query", query)
+	q, err := tmquery.New(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse a query")
 	}
+	pubsub.Unsubscribe(addr, q)
 	return &ctypes.ResultUnsubscribe{}, nil
 }
 
 func UnsubscribeAll(wsCtx rpctypes.WSRPCContext) (*ctypes.ResultUnsubscribe, error) {
-	logger.Info("Unsubscribe from all", "remote", wsCtx.GetRemoteAddr())
-	channels := wsCtx.DeleteAllSubscriptions()
-	for _, ch := range channels {
-		pubsub.Unsubscribe(ch)
-	}
+	addr := wsCtx.GetRemoteAddr()
+	logger.Info("Unsubscribe from all", "remote", addr)
+	pubsub.UnsubscribeAll(addr)
 	return &ctypes.ResultUnsubscribe{}, nil
 }

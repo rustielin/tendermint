@@ -149,13 +149,14 @@ const (
 
 // EventsPublisher is an interface for somebody who wants to publish events.
 type EventsPublisher interface {
-	PublishWithTags(interface{}, map[string]interface{})
+	PublishWithTags(interface{}, map[string]interface{}) error
 }
 
 // EventsSubscriber is an interface for somebody who wants to listen for events.
 type EventsSubscriber interface {
-	Subscribe(tmpubsub.Query) chan interface{}
-	Unsubscribe(chan interface{})
+	Subscribe(string, tmpubsub.Query, chan<- interface{})
+	Unsubscribe(string, tmpubsub.Query)
+	UnsubscribeAll(string)
 }
 
 // PubSub is a common interface unifying publisher and subscriber.
@@ -199,63 +200,64 @@ func safeQueryFor(eventType string) tmpubsub.Query {
 
 //--- block, tx, and vote events
 
-func FireEventNewBlock(p EventsPublisher, block EventDataNewBlock) {
-	fireEvent(p, EventNewBlock, TMEventData{block})
+func FireEventNewBlock(p EventsPublisher, block EventDataNewBlock) error {
+	return fireEvent(p, EventNewBlock, TMEventData{block})
 }
 
-func FireEventNewBlockHeader(p EventsPublisher, header EventDataNewBlockHeader) {
-	fireEvent(p, EventNewBlockHeader, TMEventData{header})
+func FireEventNewBlockHeader(p EventsPublisher, header EventDataNewBlockHeader) error {
+	return fireEvent(p, EventNewBlockHeader, TMEventData{header})
 }
 
-func FireEventVote(p EventsPublisher, vote EventDataVote) {
-	fireEvent(p, EventVote, TMEventData{vote})
+func FireEventVote(p EventsPublisher, vote EventDataVote) error {
+	return fireEvent(p, EventVote, TMEventData{vote})
 }
 
-func FireEventTx(p EventsPublisher, tx EventDataTx) {
-	fireEvent(p, EventTx(tx.Tx), TMEventData{tx})
+func FireEventTx(p EventsPublisher, tx EventDataTx) error {
+	return fireEvent(p, EventTx(tx.Tx), TMEventData{tx})
 }
 
 //--- EventDataRoundState events
 
-func FireEventNewRoundStep(p EventsPublisher, rs EventDataRoundState) {
-	fireEvent(p, EventNewRoundStep, TMEventData{rs})
+func FireEventNewRoundStep(p EventsPublisher, rs EventDataRoundState) error {
+	return fireEvent(p, EventNewRoundStep, TMEventData{rs})
 }
 
-func FireEventTimeoutPropose(p EventsPublisher, rs EventDataRoundState) {
-	fireEvent(p, EventTimeoutPropose, TMEventData{rs})
+func FireEventTimeoutPropose(p EventsPublisher, rs EventDataRoundState) error {
+	return fireEvent(p, EventTimeoutPropose, TMEventData{rs})
 }
 
-func FireEventTimeoutWait(p EventsPublisher, rs EventDataRoundState) {
-	fireEvent(p, EventTimeoutWait, TMEventData{rs})
+func FireEventTimeoutWait(p EventsPublisher, rs EventDataRoundState) error {
+	return fireEvent(p, EventTimeoutWait, TMEventData{rs})
 }
 
-func FireEventNewRound(p EventsPublisher, rs EventDataRoundState) {
-	fireEvent(p, EventNewRound, TMEventData{rs})
+func FireEventNewRound(p EventsPublisher, rs EventDataRoundState) error {
+	return fireEvent(p, EventNewRound, TMEventData{rs})
 }
 
-func FireEventCompleteProposal(p EventsPublisher, rs EventDataRoundState) {
-	fireEvent(p, EventCompleteProposal, TMEventData{rs})
+func FireEventCompleteProposal(p EventsPublisher, rs EventDataRoundState) error {
+	return fireEvent(p, EventCompleteProposal, TMEventData{rs})
 }
 
-func FireEventPolka(p EventsPublisher, rs EventDataRoundState) {
-	fireEvent(p, EventPolka, TMEventData{rs})
+func FireEventPolka(p EventsPublisher, rs EventDataRoundState) error {
+	return fireEvent(p, EventPolka, TMEventData{rs})
 }
 
-func FireEventUnlock(p EventsPublisher, rs EventDataRoundState) {
-	fireEvent(p, EventUnlock, TMEventData{rs})
+func FireEventUnlock(p EventsPublisher, rs EventDataRoundState) error {
+	return fireEvent(p, EventUnlock, TMEventData{rs})
 }
 
-func FireEventRelock(p EventsPublisher, rs EventDataRoundState) {
-	fireEvent(p, EventRelock, TMEventData{rs})
+func FireEventRelock(p EventsPublisher, rs EventDataRoundState) error {
+	return fireEvent(p, EventRelock, TMEventData{rs})
 }
 
-func FireEventLock(p EventsPublisher, rs EventDataRoundState) {
-	fireEvent(p, EventLock, TMEventData{rs})
+func FireEventLock(p EventsPublisher, rs EventDataRoundState) error {
+	return fireEvent(p, EventLock, TMEventData{rs})
 }
 
 // All events should be based on this FireEvent to ensure they are TMEventData.
-func fireEvent(p EventsPublisher, eventType string, eventData TMEventData) {
+func fireEvent(p EventsPublisher, eventType string, eventData TMEventData) error {
 	if p != nil {
-		p.PublishWithTags(eventData, map[string]interface{}{EventTypeKey: eventType})
+		return p.PublishWithTags(eventData, map[string]interface{}{EventTypeKey: eventType})
 	}
+	return nil
 }

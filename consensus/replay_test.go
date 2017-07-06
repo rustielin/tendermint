@@ -126,7 +126,7 @@ func writeWAL(walMsgs string) string {
 }
 
 func waitForBlock(newBlockCh chan interface{}, thisCase *testCase, i int) {
-	after := time.After(time.Second * 10)
+	after := time.After(time.Second * 20)
 	select {
 	case <-newBlockCh:
 	case <-after:
@@ -153,6 +153,7 @@ func runReplayTest(t *testing.T, cs *ConsensusState, walFile string, newBlockCh 
 	cs.Stop()
 	cs.Wait()
 	cs.pubsub.Stop()
+	close(newBlockCh)
 }
 
 func toPV(pv PrivValidator) *types.PrivValidator {
@@ -182,7 +183,8 @@ func setupReplayTest(t *testing.T, thisCase *testCase, nLines int, crashAfter bo
 
 	t.Logf("[WARN] setupReplayTest LastStep=%v", toPV(cs.privValidator).LastStep)
 
-	newBlockCh := cs.pubsub.Subscribe(types.EventQueryNewBlock)
+	newBlockCh := make(chan interface{})
+	cs.pubsub.Subscribe(testClientID, types.EventQueryNewBlock, newBlockCh)
 
 	return cs, newBlockCh, lastMsg, walFile
 }
@@ -229,22 +231,25 @@ func TestWALCrashBeforeWritePropose(t *testing.T) {
 	}
 }
 
-// func TestWALCrashBeforeWritePrevote(t *testing.T) {
-// 	for _, thisCase := range testCases {
-// 		testReplayCrashBeforeWriteVote(t, thisCase, thisCase.prevoteLine, types.EventQueryCompleteProposal)
-// 	}
-// }
+func TestWALCrashBeforeWritePrevote(t *testing.T) {
+	for _, thisCase := range testCases {
+		testReplayCrashBeforeWriteVote(t, thisCase, thisCase.prevoteLine, types.EventQueryCompleteProposal)
+	}
+}
 
-// func TestWALCrashBeforeWritePrecommit(t *testing.T) {
-// 	for _, thisCase := range testCases {
-// 		testReplayCrashBeforeWriteVote(t, thisCase, thisCase.precommitLine, types.EventQueryPolka)
-// 	}
-// }
+func TestWALCrashBeforeWritePrecommit(t *testing.T) {
+	for _, thisCase := range testCases {
+		testReplayCrashBeforeWriteVote(t, thisCase, thisCase.precommitLine, types.EventQueryPolka)
+	}
+}
 
 func testReplayCrashBeforeWriteVote(t *testing.T, thisCase *testCase, lineNum int, eventQuery tmpubsub.Query) {
 	// setup replay test where last message is a vote
 	cs, newBlockCh, voteMsg, walFile := setupReplayTest(t, thisCase, lineNum, false)
-	eventCh := cs.pubsub.Subscribe(eventQuery)
+
+	eventCh := make(chan interface{})
+	cs.pubsub.Subscribe(testClientID, eventQuery, eventCh)
+
 	go func() {
 		for range eventCh {
 			msg := readTimedWALMessage(t, voteMsg)
@@ -254,6 +259,7 @@ func testReplayCrashBeforeWriteVote(t *testing.T, thisCase *testCase, lineNum in
 			toPV(cs.privValidator).LastSignature = vote.Vote.Signature
 		}
 	}()
+
 	runReplayTest(t, cs, walFile, newBlockCh, thisCase, lineNum)
 }
 
