@@ -68,8 +68,9 @@ func TestByzantine(t *testing.T) {
 		pubsub.SetLogger(logger.With("module", "pubsub", "validator", i))
 		_, err := pubsub.Start()
 		require.NoError(t, err)
+		defer pubsub.Stop()
 
-		eventChans[i] = make(chan interface{})
+		eventChans[i] = make(chan interface{}, 1)
 		pubsub.Subscribe(testClientID, types.EventQueryNewBlock, eventChans[i])
 
 		conR := NewConsensusReactor(css[i], true) // so we dont start the consensus states

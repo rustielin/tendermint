@@ -97,11 +97,12 @@ type RoundState struct {
 }
 
 func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
+	rsCopy := *rs
 	edrs := types.EventDataRoundState{
 		Height:     rs.Height,
 		Round:      rs.Round,
 		Step:       rs.Step.String(),
-		RoundState: rs,
+		RoundState: &rsCopy,
 	}
 	return edrs
 }

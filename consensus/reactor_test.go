@@ -19,7 +19,7 @@ func init() {
 //----------------------------------------------
 // in-process testnets
 
-func startConsensusNet(t *testing.T, css []*ConsensusState, N int, subscribeEventRespond bool) ([]*ConsensusReactor, []chan interface{}) {
+func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*ConsensusReactor, []chan interface{}) {
 	reactors := make([]*ConsensusReactor, N)
 	eventChans := make([]chan interface{}, N)
 	logger := consensusLogger()
@@ -36,16 +36,8 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int, subscribeEven
 
 		reactors[i].SetPubsub(pubsub)
 
-		eventChans[i] = make(chan interface{})
+		eventChans[i] = make(chan interface{}, 1)
 		pubsub.Subscribe(testClientID, types.EventQueryNewBlock, eventChans[i])
-		if subscribeEventRespond {
-			go func(ch chan interface{}) {
-				for data := range ch {
-					ch <- data
-					<-ch
-				}
-			}(eventChans[i])
-		}
 	}
 	// make connected switches and start all reactors
 	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
@@ -73,7 +65,7 @@ func stopConsensusNet(reactors []*ConsensusReactor) {
 func TestReactor(t *testing.T) {
 	N := 4
 	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
-	reactors, eventChans := startConsensusNet(t, css, N, false)
+	reactors, eventChans := startConsensusNet(t, css, N)
 	defer stopConsensusNet(reactors)
 	// wait till everyone makes the first new block
 	timeoutWaitGroup(t, N, func(wg *sync.WaitGroup, j int) {
@@ -88,7 +80,7 @@ func TestReactor(t *testing.T) {
 func TestVotingPowerChange(t *testing.T) {
 	nVals := 4
 	css := randConsensusNet(nVals, "consensus_voting_power_changes_test", newMockTickerFunc(true), newPersistentDummy)
-	reactors, eventChans := startConsensusNet(t, css, nVals, true)
+	reactors, eventChans := startConsensusNet(t, css, nVals)
 	defer stopConsensusNet(reactors)
 
 	// map of active validators
@@ -99,8 +91,7 @@ func TestVotingPowerChange(t *testing.T) {
 
 	// wait till everyone makes block 1
 	timeoutWaitGroup(t, nVals, func(wg *sync.WaitGroup, j int) {
-		block := <-eventChans[j]
-		eventChans[j] <- block
+		<-eventChans[j]
 		wg.Done()
 	}, css)
 
@@ -149,7 +140,7 @@ func TestValidatorSetChanges(t *testing.T) {
 	nPeers := 7
 	nVals := 4
 	css := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentDummy)
-	reactors, eventChans := startConsensusNet(t, css, nPeers, true)
+	reactors, eventChans := startConsensusNet(t, css, nPeers)
 	defer stopConsensusNet(reactors)
 
 	// map of active validators
@@ -161,7 +152,6 @@ func TestValidatorSetChanges(t *testing.T) {
 	// wait till everyone makes block 1
 	timeoutWaitGroup(t, nPeers, func(wg *sync.WaitGroup, j int) {
 		<-eventChans[j]
-		eventChans[j] <- struct{}{}
 		wg.Done()
 	}, css)
 
@@ -246,7 +236,7 @@ func TestReactorWithTimeoutCommit(t *testing.T) {
 		css[i].config.SkipTimeoutCommit = false
 	}
 
-	reactors, eventChans := startConsensusNet(t, css, N-1, false)
+	reactors, eventChans := startConsensusNet(t, css, N-1)
 	defer stopConsensusNet(reactors)
 
 	// wait till everyone makes the first new block
@@ -269,7 +259,6 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 			css[j].mempool.CheckTx(tx, nil)
 		}
 
-		eventChans[j] <- newBlockI
 		wg.Done()
 	}, css)
 }

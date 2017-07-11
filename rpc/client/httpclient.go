@@ -206,7 +206,7 @@ func newWSEvents(remote, endpoint string) *WSEvents {
 // BaseService.Start -> eventSwitch.OnStart -> WSEvents.Start
 func (w *WSEvents) Start() (bool, error) {
 	ws := rpcclient.NewWSClient(w.remote, w.endpoint)
-	_, err = ws.Start()
+	_, err := ws.Start()
 	if err == nil {
 		w.ws = ws
 		go w.eventListener()

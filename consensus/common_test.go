@@ -253,7 +253,7 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv *ty
 	cs.SetLogger(log.TestingLogger())
 	cs.SetPrivValidator(pv)
 
-	pubsub := tmpubsub.NewServer()
+	pubsub := tmpubsub.NewServer(tmpubsub.BufferCapacity(100), tmpubsub.WaitSlowClients())
 	pubsub.SetLogger(log.TestingLogger().With("module", "pubsub"))
 	pubsub.Start()
 	cs.SetPubsub(pubsub)

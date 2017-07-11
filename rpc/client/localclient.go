@@ -143,15 +143,13 @@ func (c Local) Unsubscribe(query string) {
 		return
 	}
 
-	if ch, ok := c.subscriptions[query]; ok {
+	if _, ok := c.subscriptions[query]; ok {
 		c.PubSub.Unsubscribe("rpc/client/local", q)
 		delete(c.subscriptions, query)
 	}
 }
 
 func (c Local) UnsubscribeAll() {
-	for _, ch := range c.subscriptions {
-		c.PubSub.UnsubscribeAll("rpc/client/local")
-		c.subscriptions = make(map[string]chan interface{})
-	}
+	c.PubSub.UnsubscribeAll("rpc/client/local")
+	c.subscriptions = make(map[string]chan interface{})
 }

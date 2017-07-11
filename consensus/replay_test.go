@@ -23,7 +23,6 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tmlibs/log"
-	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 )
 
 func init() {
@@ -150,10 +149,10 @@ func runReplayTest(t *testing.T, cs *ConsensusState, walFile string, newBlockCh 
 	// Assuming the consensus state is running, replay of any WAL, including the empty one,
 	// should eventually be followed by a new block, or else something is wrong
 	waitForBlock(newBlockCh, thisCase, i)
+	cs.pubsub.Unsubscribe(testClientID, types.EventQueryNewBlock)
 	cs.Stop()
 	cs.Wait()
 	cs.pubsub.Stop()
-	close(newBlockCh)
 }
 
 func toPV(pv PrivValidator) *types.PrivValidator {
@@ -183,7 +182,7 @@ func setupReplayTest(t *testing.T, thisCase *testCase, nLines int, crashAfter bo
 
 	t.Logf("[WARN] setupReplayTest LastStep=%v", toPV(cs.privValidator).LastStep)
 
-	newBlockCh := make(chan interface{})
+	newBlockCh := make(chan interface{}, 1)
 	cs.pubsub.Subscribe(testClientID, types.EventQueryNewBlock, newBlockCh)
 
 	return cs, newBlockCh, lastMsg, walFile
@@ -233,32 +232,24 @@ func TestWALCrashBeforeWritePropose(t *testing.T) {
 
 func TestWALCrashBeforeWritePrevote(t *testing.T) {
 	for _, thisCase := range testCases {
-		testReplayCrashBeforeWriteVote(t, thisCase, thisCase.prevoteLine, types.EventQueryCompleteProposal)
+		testReplayCrashBeforeWriteVote(t, thisCase, thisCase.prevoteLine)
 	}
 }
 
 func TestWALCrashBeforeWritePrecommit(t *testing.T) {
 	for _, thisCase := range testCases {
-		testReplayCrashBeforeWriteVote(t, thisCase, thisCase.precommitLine, types.EventQueryPolka)
+		testReplayCrashBeforeWriteVote(t, thisCase, thisCase.precommitLine)
 	}
 }
 
-func testReplayCrashBeforeWriteVote(t *testing.T, thisCase *testCase, lineNum int, eventQuery tmpubsub.Query) {
+func testReplayCrashBeforeWriteVote(t *testing.T, thisCase *testCase, lineNum int) {
 	// setup replay test where last message is a vote
 	cs, newBlockCh, voteMsg, walFile := setupReplayTest(t, thisCase, lineNum, false)
 
-	eventCh := make(chan interface{})
-	cs.pubsub.Subscribe(testClientID, eventQuery, eventCh)
-
-	go func() {
-		for range eventCh {
-			msg := readTimedWALMessage(t, voteMsg)
-			vote := msg.Msg.(msgInfo).Msg.(*VoteMessage)
-			// Set LastSig
-			toPV(cs.privValidator).LastSignBytes = types.SignBytes(cs.state.ChainID, vote.Vote)
-			toPV(cs.privValidator).LastSignature = vote.Vote.Signature
-		}
-	}()
+	msg := readTimedWALMessage(t, voteMsg)
+	vote := msg.Msg.(msgInfo).Msg.(*VoteMessage)
+	toPV(cs.privValidator).LastSignBytes = types.SignBytes(cs.state.ChainID, vote.Vote)
+	toPV(cs.privValidator).LastSignature = vote.Vote.Signature
 
 	runReplayTest(t, cs, walFile, newBlockCh, thisCase, lineNum)
 }
