@@ -191,10 +191,6 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 
 	pubsub := tmpubsub.NewServer(tmpubsub.BufferCapacity(1000), tmpubsub.OverflowStrategyDrop())
 	pubsub.SetLogger(logger.With("module", "pubsub"))
-	_, err := pubsub.Start()
-	if err != nil {
-		cmn.Exit(cmn.Fmt("Failed to start pubsub server: %v", err))
-	}
 
 	// services which will be publishing and/or subscribing for messages (events)
 	bcReactor.SetPubsub(pubsub)
@@ -231,6 +227,11 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 }
 
 func (n *Node) OnStart() error {
+	_, err := n.pubsub.Start()
+	if err != nil {
+		return err
+	}
+
 	// Create & add listener
 	protocol, address := ProtocolAndAddress(n.config.P2P.ListenAddress)
 	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
@@ -239,7 +240,7 @@ func (n *Node) OnStart() error {
 	// Start the switch
 	n.sw.SetNodeInfo(n.makeNodeInfo())
 	n.sw.SetNodePrivKey(n.privKey)
-	_, err := n.sw.Start()
+	_, err = n.sw.Start()
 	if err != nil {
 		return err
 	}
@@ -278,6 +279,8 @@ func (n *Node) OnStop() {
 			n.Logger.Error("Error closing listener", "listener", l, "err", err)
 		}
 	}
+
+	n.pubsub.Stop()
 }
 
 func (n *Node) RunForever() {

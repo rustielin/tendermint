@@ -11,6 +11,10 @@ import (
 	tmquery "github.com/tendermint/tmlibs/pubsub/query"
 )
 
+const (
+	pubsubClientID = "rpc-localclient"
+)
+
 /*
 Local is a Client implementation that directly executes the rpc
 functions on a given node, without going through HTTP or GRPC
@@ -28,7 +32,6 @@ powerful control during testing, you probably want the "client/mock" package.
 type Local struct {
 	node *nm.Node
 	types.PubSub
-	subscriptions map[string]chan interface{}
 }
 
 // NewLocal configures a client that calls the Node directly.
@@ -40,9 +43,8 @@ type Local struct {
 func NewLocal(node *nm.Node) Local {
 	node.ConfigureRPC()
 	return Local{
-		node:          node,
-		PubSub:        node.PubSub(),
-		subscriptions: make(map[string]chan interface{}),
+		node:   node,
+		PubSub: node.PubSub(),
 	}
 }
 
@@ -114,25 +116,13 @@ func (c Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return core.Tx(hash, prove)
 }
 
-func (c Local) Subscribe(query string, out chan<- types.TMEventData) error {
-	if _, ok := c.subscriptions[query]; ok {
-		return errors.New("already subscribed")
-	}
-
+func (c Local) Subscribe(query string, out chan<- interface{}) error {
 	q, err := tmquery.New(query)
 	if err != nil {
 		return errors.Wrap(err, "failed to parse query")
 	}
-	ch := make(chan interface{})
-	c.PubSub.Subscribe("rpc/client/local", q, ch)
-	go func() {
-		for e := range ch {
-			if ed, ok := e.(types.TMEventData); ok {
-				out <- ed
-			}
-		}
-	}()
-	c.subscriptions[query] = ch
+
+	c.PubSub.Subscribe(pubsubClientID, q, out)
 
 	return nil
 }
@@ -143,13 +133,9 @@ func (c Local) Unsubscribe(query string) {
 		return
 	}
 
-	if _, ok := c.subscriptions[query]; ok {
-		c.PubSub.Unsubscribe("rpc/client/local", q)
-		delete(c.subscriptions, query)
-	}
+	c.PubSub.Unsubscribe(pubsubClientID, q)
 }
 
 func (c Local) UnsubscribeAll() {
-	c.PubSub.UnsubscribeAll("rpc/client/local")
-	c.subscriptions = make(map[string]chan interface{})
+	c.PubSub.UnsubscribeAll(pubsubClientID)
 }

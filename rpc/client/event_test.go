@@ -45,20 +45,20 @@ func TestBlockEvents(t *testing.T) {
 
 		// listen for a new block; ensure height increases by 1
 		var firstBlockHeight int
-		for i := 0; i < 3; i++ {
+		for j := 0; j < 3; j++ {
 			evtTyp := types.EventNewBlock
 			evt, err := client.WaitForOneEvent(c, evtTyp, 1*time.Second)
-			require.Nil(err, "%d: %+v", i, err)
+			require.Nil(err, "%d: %+v", j, err)
 			blockEvent, ok := evt.Unwrap().(types.EventDataNewBlock)
-			require.True(ok, "%d: %#v", i, evt)
+			require.True(ok, "%d: %#v", j, evt)
 
 			block := blockEvent.Block
-			if i == 0 {
+			if j == 0 {
 				firstBlockHeight = block.Header.Height
 				continue
 			}
 
-			require.Equal(block.Header.Height, firstBlockHeight+i)
+			require.Equal(block.Header.Height, firstBlockHeight+j)
 		}
 	}
 }

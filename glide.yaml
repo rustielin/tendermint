@@ -33,7 +33,7 @@ import:
   - iavl
   - testutil
 - package: github.com/tendermint/tmlibs
-  version: 27b233834b4fd174c21f0334270618d5d903849c
+  version: 4aa024d843b081977304c0184e8c56c05d22c32f
   subpackages:
   - autofile
   - cli

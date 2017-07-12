@@ -3,13 +3,13 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
 
 	"github.com/pkg/errors"
 	data "github.com/tendermint/go-wire/data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 /*
@@ -181,10 +181,12 @@ func (c *HTTP) Validators() (*ctypes.ResultValidators, error) {
 /** websocket event stuff here... **/
 
 type WSEvents struct {
+	cmn.BaseService
 	remote        string
 	endpoint      string
 	ws            *rpcclient.WSClient
-	subscriptions map[string]chan<- types.TMEventData
+	subscriptions map[string]struct{}
+	out           chan<- interface{}
 
 	// used for signaling the goroutine that feeds ws -> EventSwitch
 	quit chan bool
@@ -192,13 +194,16 @@ type WSEvents struct {
 }
 
 func newWSEvents(remote, endpoint string) *WSEvents {
-	return &WSEvents{
+	wsEvents := &WSEvents{
 		endpoint:      endpoint,
 		remote:        remote,
-		subscriptions: make(map[string]chan<- types.TMEventData),
+		subscriptions: make(map[string]struct{}),
 		quit:          make(chan bool, 1),
 		done:          make(chan bool, 1),
 	}
+
+	wsEvents.BaseService = *cmn.NewBaseService(nil, "WSEvents", wsEvents)
+	return wsEvents
 }
 
 // Start is the only way I could think the extend OnStart from
@@ -206,12 +211,12 @@ func newWSEvents(remote, endpoint string) *WSEvents {
 // BaseService.Start -> eventSwitch.OnStart -> WSEvents.Start
 func (w *WSEvents) Start() (bool, error) {
 	ws := rpcclient.NewWSClient(w.remote, w.endpoint)
-	_, err := ws.Start()
+	started, err := ws.Start()
 	if err == nil {
 		w.ws = ws
 		go w.eventListener()
 	}
-	return true, errors.Wrap(err, "StartWSEvent")
+	return started, errors.Wrap(err, "StartWSEvent")
 }
 
 // Stop wraps the BaseService/eventSwitch actions as Start does
@@ -225,9 +230,8 @@ func (w *WSEvents) Stop() bool {
 }
 
 /** TODO: more intelligent subscriptions! **/
-func (w *WSEvents) Subscribe(query string, out chan<- types.TMEventData) error {
-	eventType := extractEventType(query)
-	if _, ok := w.subscriptions[eventType]; ok {
+func (w *WSEvents) Subscribe(query string, out chan<- interface{}) error {
+	if _, ok := w.subscriptions[query]; ok {
 		return errors.New("already subscribed")
 	}
 
@@ -235,26 +239,21 @@ func (w *WSEvents) Subscribe(query string, out chan<- types.TMEventData) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to subscribe")
 	}
-	w.subscriptions[eventType] = out
+	w.subscriptions[query] = struct{}{}
+
+	w.out = out
 
 	return nil
 }
 
 func (w *WSEvents) Unsubscribe(query string) {
-	err := w.ws.Unsubscribe(query)
-	if err != nil {
-		// FIXME: ignore?
-	}
-	eventType := extractEventType(query)
-	delete(w.subscriptions, eventType)
+	w.ws.Unsubscribe(query)
+	delete(w.subscriptions, query)
 }
 
 func (w *WSEvents) UnsubscribeAll() {
-	err := w.ws.UnsubscribeAll()
-	if err != nil {
-		// FIXME: ignore?
-	}
-	w.subscriptions = make(map[string]chan<- types.TMEventData)
+	w.ws.UnsubscribeAll()
+	w.subscriptions = make(map[string]struct{})
 }
 
 // eventListener is an infinite loop pulling all websocket events
@@ -295,17 +294,8 @@ func (w *WSEvents) parseEvent(data []byte) (err error) {
 		return nil
 	}
 	// looks good!  let's fire this baby!
-	if out, ok := w.subscriptions[result.Name]; ok {
-		out <- result.Data
+	if result.Name != "" {
+		w.out <- result.Data
 	}
 	return nil
-}
-
-func extractEventType(query string) string {
-	re := regexp.MustCompile(types.EventTypeKey + "=" + "([^\\s]+)")
-	s := re.FindStringSubmatch(query)
-	if len(s) > 0 {
-		return s[0]
-	}
-	return ""
 }

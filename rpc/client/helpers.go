@@ -55,7 +55,7 @@ func WaitForHeight(c StatusClient, h int, waiter Waiter) error {
 //
 // This handles subscribing and unsubscribing under the hood
 func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (types.TMEventData, error) {
-	evts := make(chan types.TMEventData, 1)
+	evts := make(chan interface{}, 1)
 
 	// register for the next event of this type
 	err := c.Subscribe(types.EventTypeKey+"="+evtTyp, evts)
@@ -63,11 +63,11 @@ func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (type
 		return types.TMEventData{}, errors.Wrap(err, "failed to subscribe")
 	}
 	// make sure to unregister after the test is over
-	defer c.Unsubscribe(types.EventTypeKey + "=" + evtTyp)
+	defer c.UnsubscribeAll()
 
 	select {
 	case evt := <-evts:
-		return evt, nil
+		return evt.(types.TMEventData), nil
 	case <-time.After(timeout):
 		return types.TMEventData{}, errors.New("timed out waiting for event")
 	}

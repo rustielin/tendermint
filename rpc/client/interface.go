@@ -82,10 +82,10 @@ type NetworkClient interface {
 	DumpConsensusState() (*ctypes.ResultDumpConsensusState, error)
 }
 
-// EventsClient is reactive, you can subscribe to any TMEventData
-// type, given the proper string. see tendermint/types/events.go
+// EventsClient is reactive, you can subscribe to any message, given the proper
+// string. see tendermint/types/events.go
 type EventsClient interface {
-	Subscribe(query string, out chan<- types.TMEventData) error
+	Subscribe(query string, out chan<- interface{}) error
 	Unsubscribe(query string)
 	UnsubscribeAll()
 }
