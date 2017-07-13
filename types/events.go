@@ -5,7 +5,6 @@ import (
 
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-wire/data"
-	cmn "github.com/tendermint/tmlibs/common"
 	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 	tmquery "github.com/tendermint/tmlibs/pubsub/query"
 )
@@ -147,117 +146,30 @@ const (
 	EventTypeKey = "tm.events.type"
 )
 
-// EventsPublisher is an interface for somebody who wants to publish events.
-type EventsPublisher interface {
-	PublishWithTags(interface{}, map[string]interface{}) error
-}
-
-// EventsSubscriber is an interface for somebody who wants to listen for events.
-type EventsSubscriber interface {
-	Subscribe(string, tmpubsub.Query, chan<- interface{})
-	Unsubscribe(string, tmpubsub.Query)
-	UnsubscribeAll(string)
-}
-
-// PubSub is a common interface unifying publisher and subscriber.
-type PubSub interface {
-	EventsPublisher
-	EventsSubscriber
-	cmn.Service
-}
-
 var (
-	EventQueryBond             = safeQueryFor(EventBond)
-	EventQueryUnbond           = safeQueryFor(EventUnbond)
-	EventQueryRebond           = safeQueryFor(EventRebond)
-	EventQueryDupeout          = safeQueryFor(EventDupeout)
-	EventQueryFork             = safeQueryFor(EventFork)
-	EventQueryNewBlock         = safeQueryFor(EventNewBlock)
-	EventQueryNewBlockHeader   = safeQueryFor(EventNewBlockHeader)
-	EventQueryNewRound         = safeQueryFor(EventNewRound)
-	EventQueryNewRoundStep     = safeQueryFor(EventNewRoundStep)
-	EventQueryTimeoutPropose   = safeQueryFor(EventTimeoutPropose)
-	EventQueryCompleteProposal = safeQueryFor(EventCompleteProposal)
-	EventQueryPolka            = safeQueryFor(EventPolka)
-	EventQueryUnlock           = safeQueryFor(EventUnlock)
-	EventQueryLock             = safeQueryFor(EventLock)
-	EventQueryRelock           = safeQueryFor(EventRelock)
-	EventQueryTimeoutWait      = safeQueryFor(EventTimeoutWait)
-	EventQueryVote             = safeQueryFor(EventVote)
+	EventQueryBond             = tmquery.MustParse(EventTypeKey + "=" + EventBond)
+	EventQueryUnbond           = tmquery.MustParse(EventTypeKey + "=" + EventUnbond)
+	EventQueryRebond           = tmquery.MustParse(EventTypeKey + "=" + EventRebond)
+	EventQueryDupeout          = tmquery.MustParse(EventTypeKey + "=" + EventDupeout)
+	EventQueryFork             = tmquery.MustParse(EventTypeKey + "=" + EventFork)
+	EventQueryNewBlock         = tmquery.MustParse(EventTypeKey + "=" + EventNewBlock)
+	EventQueryNewBlockHeader   = tmquery.MustParse(EventTypeKey + "=" + EventNewBlockHeader)
+	EventQueryNewRound         = tmquery.MustParse(EventTypeKey + "=" + EventNewRound)
+	EventQueryNewRoundStep     = tmquery.MustParse(EventTypeKey + "=" + EventNewRoundStep)
+	EventQueryTimeoutPropose   = tmquery.MustParse(EventTypeKey + "=" + EventTimeoutPropose)
+	EventQueryCompleteProposal = tmquery.MustParse(EventTypeKey + "=" + EventCompleteProposal)
+	EventQueryPolka            = tmquery.MustParse(EventTypeKey + "=" + EventPolka)
+	EventQueryUnlock           = tmquery.MustParse(EventTypeKey + "=" + EventUnlock)
+	EventQueryLock             = tmquery.MustParse(EventTypeKey + "=" + EventLock)
+	EventQueryRelock           = tmquery.MustParse(EventTypeKey + "=" + EventRelock)
+	EventQueryTimeoutWait      = tmquery.MustParse(EventTypeKey + "=" + EventTimeoutWait)
+	EventQueryVote             = tmquery.MustParse(EventTypeKey + "=" + EventVote)
 )
 
 func EventQueryTx(tx Tx) tmpubsub.Query {
-	return safeQueryFor(EventTx(tx))
+	return tmquery.MustParse(EventTypeKey + "=" + EventTx(tx))
 }
 
-func safeQueryFor(eventType string) tmpubsub.Query {
-	q, err := tmquery.New(EventTypeKey + "=" + eventType)
-	if err != nil {
-		panic(fmt.Sprintf("query %v has a syntax error in it", q))
-	}
-	return q
-}
-
-//--- block, tx, and vote events
-
-func FireEventNewBlock(p EventsPublisher, block EventDataNewBlock) error {
-	return fireEvent(p, EventNewBlock, TMEventData{block})
-}
-
-func FireEventNewBlockHeader(p EventsPublisher, header EventDataNewBlockHeader) error {
-	return fireEvent(p, EventNewBlockHeader, TMEventData{header})
-}
-
-func FireEventVote(p EventsPublisher, vote EventDataVote) error {
-	return fireEvent(p, EventVote, TMEventData{vote})
-}
-
-func FireEventTx(p EventsPublisher, tx EventDataTx) error {
-	return fireEvent(p, EventTx(tx.Tx), TMEventData{tx})
-}
-
-//--- EventDataRoundState events
-
-func FireEventNewRoundStep(p EventsPublisher, rs EventDataRoundState) error {
-	return fireEvent(p, EventNewRoundStep, TMEventData{rs})
-}
-
-func FireEventTimeoutPropose(p EventsPublisher, rs EventDataRoundState) error {
-	return fireEvent(p, EventTimeoutPropose, TMEventData{rs})
-}
-
-func FireEventTimeoutWait(p EventsPublisher, rs EventDataRoundState) error {
-	return fireEvent(p, EventTimeoutWait, TMEventData{rs})
-}
-
-func FireEventNewRound(p EventsPublisher, rs EventDataRoundState) error {
-	return fireEvent(p, EventNewRound, TMEventData{rs})
-}
-
-func FireEventCompleteProposal(p EventsPublisher, rs EventDataRoundState) error {
-	return fireEvent(p, EventCompleteProposal, TMEventData{rs})
-}
-
-func FireEventPolka(p EventsPublisher, rs EventDataRoundState) error {
-	return fireEvent(p, EventPolka, TMEventData{rs})
-}
-
-func FireEventUnlock(p EventsPublisher, rs EventDataRoundState) error {
-	return fireEvent(p, EventUnlock, TMEventData{rs})
-}
-
-func FireEventRelock(p EventsPublisher, rs EventDataRoundState) error {
-	return fireEvent(p, EventRelock, TMEventData{rs})
-}
-
-func FireEventLock(p EventsPublisher, rs EventDataRoundState) error {
-	return fireEvent(p, EventLock, TMEventData{rs})
-}
-
-// All events should be based on this FireEvent to ensure they are TMEventData.
-func fireEvent(p EventsPublisher, eventType string, eventData TMEventData) error {
-	if p != nil {
-		return p.PublishWithTags(eventData, map[string]interface{}{EventTypeKey: eventType})
-	}
-	return nil
+type TxEventPublisher interface {
+	PublishEventTx(EventDataTx) error
 }

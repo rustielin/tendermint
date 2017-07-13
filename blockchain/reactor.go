@@ -49,7 +49,7 @@ type BlockchainReactor struct {
 	requestsCh   chan BlockRequest
 	timeoutsCh   chan string
 
-	pubsub types.PubSub
+	eventBus *types.EventBus
 }
 
 // NewBlockchainReactor returns new reactor instance.
@@ -242,7 +242,7 @@ FOR_LOOP:
 					// NOTE: we could improve performance if we
 					// didn't make the app commit to disk every block
 					// ... but we would need a way to get the hash without it persisting
-					err := bcR.state.ApplyBlock(bcR.pubsub, bcR.proxyAppConn, first, firstPartsHeader, types.MockMempool{})
+					err := bcR.state.ApplyBlock(bcR.eventBus, bcR.proxyAppConn, first, firstPartsHeader, types.MockMempool{})
 					if err != nil {
 						// TODO This is bad, are we zombie?
 						cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
@@ -262,9 +262,9 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 	return nil
 }
 
-// SetPubsub sets event publisher.
-func (bcR *BlockchainReactor) SetPubsub(pubsub types.PubSub) {
-	bcR.pubsub = pubsub
+// SetEventBus sets event bus.
+func (bcR *BlockchainReactor) SetEventBus(b *types.EventBus) {
+	bcR.eventBus = b
 }
 
 //-----------------------------------------------------------------------------

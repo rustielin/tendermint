@@ -48,7 +48,7 @@ type Node struct {
 	addrBook *p2p.AddrBook         // known peers
 
 	// services
-	pubsub           *tmpubsub.Server            // pub/sub for services
+	eventBus         *types.EventBus             // pub/sub for services
 	blockStore       *bc.BlockStore              // store the blockchain to disk
 	bcReactor        *bc.BlockchainReactor       // for fast-syncing
 	mempoolReactor   *mempl.MempoolReactor       // for gossipping transactions
@@ -191,10 +191,11 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 
 	pubsub := tmpubsub.NewServer(tmpubsub.BufferCapacity(1000), tmpubsub.OverflowStrategyDrop())
 	pubsub.SetLogger(logger.With("module", "pubsub"))
+	eventBus := types.NewEventBus(pubsub)
 
 	// services which will be publishing and/or subscribing for messages (events)
-	bcReactor.SetPubsub(pubsub)
-	consensusReactor.SetPubsub(pubsub)
+	bcReactor.SetEventBus(eventBus)
+	consensusReactor.SetEventBus(eventBus)
 
 	// run the profile server
 	profileHost := config.ProfListenAddress
@@ -220,14 +221,14 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 		consensusReactor: consensusReactor,
 		proxyApp:         proxyApp,
 		txIndexer:        txIndexer,
-		pubsub:           pubsub,
+		eventBus:         eventBus,
 	}
 	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
 	return node
 }
 
 func (n *Node) OnStart() error {
-	_, err := n.pubsub.Start()
+	_, err := n.eventBus.Start()
 	if err != nil {
 		return err
 	}
@@ -280,7 +281,7 @@ func (n *Node) OnStop() {
 		}
 	}
 
-	n.pubsub.Stop()
+	n.eventBus.Stop()
 }
 
 func (n *Node) RunForever() {
@@ -309,7 +310,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 	rpccore.SetTxIndexer(n.txIndexer)
-	rpccore.SetPubsub(n.pubsub)
+	rpccore.SetEventBus(n.eventBus)
 	rpccore.SetLogger(n.Logger.With("module", "rpc"))
 }
 
@@ -370,8 +371,8 @@ func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 	return n.mempoolReactor
 }
 
-func (n *Node) PubSub() types.PubSub {
-	return n.pubsub
+func (n *Node) EventBus() *types.EventBus {
+	return n.eventBus
 }
 
 // XXX: for convenience

@@ -49,8 +49,8 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// subscribe to tx being committed in block
 	deliverTxResCh := make(chan interface{})
 
-	pubsub.Subscribe("mempool", types.EventQueryTx(tx), deliverTxResCh)
-	defer pubsub.Unsubscribe("mempool", types.EventQueryTx(tx))
+	eventBus.Subscribe("mempool", types.EventQueryTx(tx), deliverTxResCh)
+	defer eventBus.Unsubscribe("mempool", types.EventQueryTx(tx))
 
 	// broadcast the tx and register checktx callback
 	checkTxResCh := make(chan *abci.Response, 1)

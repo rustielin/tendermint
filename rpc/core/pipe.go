@@ -44,7 +44,7 @@ var (
 	genDoc    *types.GenesisDoc // cache the genesis structure
 	addrBook  *p2p.AddrBook
 	txIndexer txindex.TxIndexer
-	pubsub    types.PubSub
+	eventBus  *types.EventBus
 
 	logger log.Logger
 )
@@ -89,6 +89,6 @@ func SetLogger(l log.Logger) {
 	logger = l
 }
 
-func SetPubsub(s types.PubSub) {
-	pubsub = s
+func SetEventBus(b *types.EventBus) {
+	eventBus = b
 }

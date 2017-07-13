@@ -20,7 +20,7 @@ func TestTxConcurrentWithCommit(t *testing.T) {
 	cs := newConsensusState(state, privVals[0], NewCounterApplication())
 	height, round := cs.Height, cs.Round
 	newBlockCh := make(chan interface{})
-	cs.pubsub.Subscribe(testClientID, types.EventQueryNewBlock, newBlockCh)
+	cs.eventBus.Subscribe(testClientID, types.EventQueryNewBlock, newBlockCh)
 
 	deliverTxsRange := func(start, end int) {
 		// Deliver some txs.

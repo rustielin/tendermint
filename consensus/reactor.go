@@ -34,7 +34,7 @@ type ConsensusReactor struct {
 
 	conS     *ConsensusState
 	fastSync bool
-	pubsub   types.PubSub
+	eventBus *types.EventBus
 }
 
 // NewConsensusReactor returns a new ConsensusReactor with the given consensusState.
@@ -53,7 +53,7 @@ func (conR *ConsensusReactor) OnStart() error {
 	conR.BaseReactor.OnStart()
 
 	// callbacks for broadcasting new steps and votes to peers
-	// upon their respective events (ie. uses pubsub)
+	// upon their respective events (ie. uses eventBus)
 	conR.registerEventCallbacks()
 
 	if !conR.fastSync {
@@ -290,10 +290,10 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 	}
 }
 
-// SetPubsub sets event publisher and subscriber.
-func (conR *ConsensusReactor) SetPubsub(pubsub types.PubSub) {
-	conR.pubsub = pubsub
-	conR.conS.SetPubsub(pubsub)
+// SetEventBus sets event bus.
+func (conR *ConsensusReactor) SetEventBus(b *types.EventBus) {
+	conR.eventBus = b
+	conR.conS.SetEventBus(b)
 }
 
 //--------------------------------------
@@ -302,9 +302,9 @@ func (conR *ConsensusReactor) SetPubsub(pubsub types.PubSub) {
 // broadcasting the result to peers
 func (conR *ConsensusReactor) registerEventCallbacks() {
 	stepsCh := make(chan interface{}, 100)
-	conR.pubsub.Subscribe("consensus-reactor", types.EventQueryNewRoundStep, stepsCh)
+	conR.eventBus.Subscribe("consensus-reactor", types.EventQueryNewRoundStep, stepsCh)
 	votesCh := make(chan interface{}, 100)
-	conR.pubsub.Subscribe("consensus-reactor", types.EventQueryVote, votesCh)
+	conR.eventBus.Subscribe("consensus-reactor", types.EventQueryVote, votesCh)
 	go func() {
 		for {
 			select {
@@ -319,8 +319,8 @@ func (conR *ConsensusReactor) registerEventCallbacks() {
 					conR.broadcastHasVoteMessage(edv.Vote)
 				}
 			case <-conR.Quit:
-				conR.pubsub.Unsubscribe("consensus-reactor", types.EventQueryNewRoundStep)
-				conR.pubsub.Unsubscribe("consensus-reactor", types.EventQueryVote)
+				conR.eventBus.Unsubscribe("consensus-reactor", types.EventQueryNewRoundStep)
+				conR.eventBus.Unsubscribe("consensus-reactor", types.EventQueryVote)
 				return
 			}
 		}

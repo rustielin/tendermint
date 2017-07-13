@@ -149,10 +149,10 @@ func runReplayTest(t *testing.T, cs *ConsensusState, walFile string, newBlockCh 
 	// Assuming the consensus state is running, replay of any WAL, including the empty one,
 	// should eventually be followed by a new block, or else something is wrong
 	waitForBlock(newBlockCh, thisCase, i)
-	cs.pubsub.Unsubscribe(testClientID, types.EventQueryNewBlock)
+	cs.eventBus.Unsubscribe(testClientID, types.EventQueryNewBlock)
 	cs.Stop()
 	cs.Wait()
-	cs.pubsub.Stop()
+	cs.eventBus.Stop()
 }
 
 func toPV(pv PrivValidator) *types.PrivValidator {
@@ -183,7 +183,7 @@ func setupReplayTest(t *testing.T, thisCase *testCase, nLines int, crashAfter bo
 	t.Logf("[WARN] setupReplayTest LastStep=%v", toPV(cs.privValidator).LastStep)
 
 	newBlockCh := make(chan interface{}, 1)
-	cs.pubsub.Subscribe(testClientID, types.EventQueryNewBlock, newBlockCh)
+	cs.eventBus.Subscribe(testClientID, types.EventQueryNewBlock, newBlockCh)
 
 	return cs, newBlockCh, lastMsg, walFile
 }
@@ -377,7 +377,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 }
 
 func applyBlock(st *sm.State, blk *types.Block, proxyApp proxy.AppConns) {
-	err := st.ApplyBlock(nil, proxyApp.Consensus(), blk, blk.MakePartSet(testPartSize).Header(), mempool)
+	err := st.ApplyBlock(types.NopEventBus{}, proxyApp.Consensus(), blk, blk.MakePartSet(testPartSize).Header(), mempool)
 	if err != nil {
 		panic(err)
 	}

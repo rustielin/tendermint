@@ -29,15 +29,17 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 
 		pubsub := tmpubsub.NewServer()
 		pubsub.SetLogger(logger.With("module", "pubsub", "validator", i))
-		_, err := pubsub.Start()
+
+		eventBus := types.NewEventBus(pubsub)
+		_, err := eventBus.Start()
 		if err != nil {
-			t.Fatalf("Failed to start pubsub server: %v", err)
+			t.Fatalf("Failed to start event bus: %v", err)
 		}
 
-		reactors[i].SetPubsub(pubsub)
+		reactors[i].SetEventBus(eventBus)
 
 		eventChans[i] = make(chan interface{}, 1)
-		pubsub.Subscribe(testClientID, types.EventQueryNewBlock, eventChans[i])
+		eventBus.Subscribe(testClientID, types.EventQueryNewBlock, eventChans[i])
 	}
 	// make connected switches and start all reactors
 	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {

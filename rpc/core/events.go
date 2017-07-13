@@ -19,7 +19,7 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 	}
 
 	ch := make(chan interface{}, 1000)
-	pubsub.Subscribe(addr, q, ch)
+	eventBus.Subscribe(addr, q, ch)
 
 	go func() {
 		for event := range ch {
@@ -27,7 +27,7 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 				tmResult := &ctypes.ResultEvent{query, event.(tmtypes.TMEventData)}
 				wsCtx.WriteRPCResponse(rpctypes.NewRPCResponse(wsCtx.Request.ID+"#event", tmResult, ""))
 			} else {
-				pubsub.Unsubscribe(addr, q)
+				eventBus.Unsubscribe(addr, q)
 			}
 		}
 	}()
@@ -42,13 +42,13 @@ func Unsubscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultUnsub
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse a query")
 	}
-	pubsub.Unsubscribe(addr, q)
+	eventBus.Unsubscribe(addr, q)
 	return &ctypes.ResultUnsubscribe{}, nil
 }
 
 func UnsubscribeAll(wsCtx rpctypes.WSRPCContext) (*ctypes.ResultUnsubscribe, error) {
 	addr := wsCtx.GetRemoteAddr()
 	logger.Info("Unsubscribe from all", "remote", addr)
-	pubsub.UnsubscribeAll(addr)
+	eventBus.UnsubscribeAll(addr)
 	return &ctypes.ResultUnsubscribe{}, nil
 }

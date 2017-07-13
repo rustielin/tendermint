@@ -31,7 +31,7 @@ powerful control during testing, you probably want the "client/mock" package.
 */
 type Local struct {
 	node *nm.Node
-	types.PubSub
+	*types.EventBus
 }
 
 // NewLocal configures a client that calls the Node directly.
@@ -43,8 +43,8 @@ type Local struct {
 func NewLocal(node *nm.Node) Local {
 	node.ConfigureRPC()
 	return Local{
-		node:   node,
-		PubSub: node.PubSub(),
+		node:     node,
+		EventBus: node.EventBus(),
 	}
 }
 
@@ -122,7 +122,7 @@ func (c Local) Subscribe(query string, out chan<- interface{}) error {
 		return errors.Wrap(err, "failed to parse query")
 	}
 
-	c.PubSub.Subscribe(pubsubClientID, q, out)
+	c.EventBus.Subscribe(pubsubClientID, q, out)
 
 	return nil
 }
@@ -133,9 +133,9 @@ func (c Local) Unsubscribe(query string) {
 		return
 	}
 
-	c.PubSub.Unsubscribe(pubsubClientID, q)
+	c.EventBus.Unsubscribe(pubsubClientID, q)
 }
 
 func (c Local) UnsubscribeAll() {
-	c.PubSub.UnsubscribeAll(pubsubClientID)
+	c.EventBus.UnsubscribeAll(pubsubClientID)
 }

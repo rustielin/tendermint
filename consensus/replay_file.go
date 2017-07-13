@@ -44,8 +44,8 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 	// ensure all new step events are regenerated as expected
 	newStepCh := make(chan interface{})
 
-	cs.pubsub.Subscribe("replay-file", types.EventQueryNewRoundStep, newStepCh)
-	defer cs.pubsub.Unsubscribe("replay-file", types.EventQueryNewRoundStep)
+	cs.eventBus.Subscribe("replay-file", types.EventQueryNewRoundStep, newStepCh)
+	defer cs.eventBus.Unsubscribe("replay-file", types.EventQueryNewRoundStep)
 
 	// just open the file for reading, no need to use wal
 	fp, err := os.OpenFile(file, os.O_RDONLY, 0666)
@@ -105,7 +105,7 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 	pb.cs.Wait()
 
 	newCS := NewConsensusState(pb.cs.config, pb.genesisState.Copy(), pb.cs.proxyAppConn, pb.cs.blockStore, pb.cs.mempool)
-	newCS.SetPubsub(pb.cs.pubsub)
+	newCS.SetEventBus(pb.cs.eventBus)
 	newCS.startForReplay()
 
 	pb.fp.Close()
@@ -186,8 +186,8 @@ func (pb *playback) replayConsoleLoop() int {
 			// ensure all new step events are regenerated as expected
 			newStepCh := make(chan interface{})
 
-			pb.cs.pubsub.Subscribe("replay-file", types.EventQueryNewRoundStep, newStepCh)
-			defer pb.cs.pubsub.Unsubscribe("replay-file", types.EventQueryNewRoundStep)
+			pb.cs.eventBus.Subscribe("replay-file", types.EventQueryNewRoundStep, newStepCh)
+			defer pb.cs.eventBus.Unsubscribe("replay-file", types.EventQueryNewRoundStep)
 
 			if len(tokens) == 1 {
 				pb.replayReset(1, newStepCh)
@@ -258,14 +258,13 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 		cmn.Exit(cmn.Fmt("Error starting proxy app conns: %v", err))
 	}
 
-	// Make event switch
-	pubsub := tmpubsub.NewServer()
-	if _, err := pubsub.Start(); err != nil {
+	eventBus := types.NewEventBus(tmpubsub.NewServer())
+	if _, err := eventBus.Start(); err != nil {
 		cmn.Exit(cmn.Fmt("Failed to start event server: %v", err))
 	}
 
 	consensusState := NewConsensusState(csConfig, state.Copy(), proxyApp.Consensus(), blockStore, types.MockMempool{})
 
-	consensusState.SetPubsub(pubsub)
+	consensusState.SetEventBus(eventBus)
 	return consensusState
 }
