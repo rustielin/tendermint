@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/pkg/errors"
 	data "github.com/tendermint/go-wire/data"
@@ -187,6 +188,7 @@ type WSEvents struct {
 	ws            *rpcclient.WSClient
 	subscriptions map[string]struct{}
 	out           chan<- interface{}
+	mtx           sync.Mutex
 
 	// used for signaling the goroutine that feeds ws -> EventSwitch
 	quit chan bool
@@ -241,7 +243,12 @@ func (w *WSEvents) Subscribe(query string, out chan<- interface{}) error {
 	}
 	w.subscriptions[query] = struct{}{}
 
+	w.mtx.Lock()
+	if w.out != nil {
+		close(w.out)
+	}
 	w.out = out
+	w.mtx.Unlock()
 
 	return nil
 }
@@ -295,7 +302,9 @@ func (w *WSEvents) parseEvent(data []byte) (err error) {
 	}
 	// looks good!  let's fire this baby!
 	if result.Name != "" {
+		w.mtx.Lock()
 		w.out <- result.Data
+		w.mtx.Unlock()
 	}
 	return nil
 }
